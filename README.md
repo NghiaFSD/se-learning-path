@@ -16,11 +16,6 @@ Welcome! I am **Le Trong Nghia**, a Software Engineering student. This repositor
 - **Technologies:** Express.js, RESTful APIs, JWT Authentication, MongoDB/MySQL.
 - **Objective:** Actively seeking a Node.js Backend Internship in the Banking and Fintech sectors.
 
-### 3. IoT & Robotics
-
-- **Hardware:** Arduino, Infrared Flame Sensors, Servo Motors, Motor Drivers.
-- **Featured Project:** An autonomous, Bluetooth-controlled fire-fighting robot designed to detect and extinguish flames automatically.
-
 ---
 
 ## 🇯🇵 Foreign Language: Japanese Path (N5 - N4)
