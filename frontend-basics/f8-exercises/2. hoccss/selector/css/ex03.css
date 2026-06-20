@@ -1,0 +1,19 @@
+/* .links li [target]{
+    color: red;
+} */
+
+/* .links li a[href="https://fullstack.edu.vn"]{
+    color: red;
+} */
+
+/* .links li a[href^="https://fullstack.edu.vn"]{
+    color: red;
+} */
+
+.links li a[href*="fullstack.edu.vn"]{
+    color: red;
+}
+
+[class^="col"]{
+    color: red;
+}

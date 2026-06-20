@@ -1,0 +1,51 @@
+/*
+float: none | left | right
+*/
+.box {
+    border: 1px solid red;
+    max-width: 80%;
+    margin: 0 auto;
+}
+
+
+/* .box {
+    overflow: auto;
+} */
+
+.col-1 {
+    width: 100px;
+    height: 100px;
+    background: green;
+    color: #fff;
+    float: left;
+}
+
+.col-2 {
+    width: 100px;
+    height: 120px;
+    background: red;
+    color: #fff;
+    float: left;
+}
+
+.col-3 {
+    width: 100px;
+    height: 150px;
+    background: blueviolet;
+    color: #fff;
+    float: left;
+}
+
+.text {
+    clear: both;
+}
+
+.clearfix {
+    clear: both;
+}
+
+.box::after {
+    content: '';
+    display: block;
+    clear: both;
+}

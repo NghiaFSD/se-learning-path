@@ -1,0 +1,65 @@
+@mixin size($width, $height: $width) {
+    width: $width;
+    height: $height;
+}
+
+@mixin rounded($tl, $tr: $tl, $br: $tl, $bl: $tl) {
+    border-top-left-radius: $tl;
+    border-top-right-radius: $tr;
+    border-bottom-right-radius: $br;
+    border-bottom-left-radius: $bl;
+}
+
+@mixin flexCenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@mixin grid($direction) {
+    display: flex;
+    @if $direction == vertical {
+        flex-direction: column;
+    }
+    @if $direction == horizontal {
+        flex-direction: row;
+    }
+}
+
+@mixin gridContainer($column, $spacing) {
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: $spacing;
+    margin-left: $spacing * -1;
+
+    > * {
+        width: calc(100% / $column - $spacing);
+        margin-left: $spacing;;
+    }
+}
+
+// mobile, tablet, PC
+
+@mixin screen($break-point) {
+    @if $break-point == mobile {
+        @media (max-width: 575px) {
+            @content;
+        }
+    }
+    @if $break-point == tablet {
+        @media (min-width: 576px) and (max-width: 991px) {
+            @content;
+        }
+    }
+    @if $break-point == pc {
+        @media (min-width: 992px) {
+            @content;
+        }
+    }
+}
+
+/*
+@include screen(mobile) {
+    @include gridContainer(1, 20px);
+};
+*/

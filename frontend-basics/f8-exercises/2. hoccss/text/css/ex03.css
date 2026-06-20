@@ -1,0 +1,16 @@
+body{
+    font-weight: normal;
+    font-style: normal;
+    word-spacing: 5px;
+    text-indent: 10px;
+}
+
+h3 a{
+    /* text-decoration: line-through underline overline; */
+    text-transform: capitalize;
+    letter-spacing: 3px;
+}
+
+.content{
+    word-wrap: break-word;
+}

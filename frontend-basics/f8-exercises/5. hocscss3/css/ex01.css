@@ -1,0 +1,25 @@
+@charset "UTF-8";
+.col-small {
+  width: 40px;
+}
+
+.col-medium {
+  width: 60px;
+}
+
+.col-large {
+  width: 80px;
+}
+
+/*
+Toán tử so sánh
+
+1. Bằng: ==
+2. Khác: !=
+3. Lớn hơn: >
+4. Nhỏ hơn: <
+5. Lớn hơn hoặc bằng: >=
+6. Nhỏ hơn hoặc bằng: <=
+*/
+
+/*# sourceMappingURL=ex01.css.map */

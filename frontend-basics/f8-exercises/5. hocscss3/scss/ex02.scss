@@ -1,0 +1,14 @@
+.header {
+  padding: 20px 0;
+  .header__inner {
+    position: relative;
+    z-index: 10;
+    @media screen and (max-width: 767px) {
+      position: static;
+    }
+  }
+
+  @media screen and (max-width: 767px) {
+    padding: 0;
+  }
+}

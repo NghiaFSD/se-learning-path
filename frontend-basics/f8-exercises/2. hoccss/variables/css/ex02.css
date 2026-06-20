@@ -1,0 +1,7 @@
+.content h1 {
+  --primary-color: yellow;
+}
+
+.content {
+  --border-color: black;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "package",
+  "version": "1.0.0",
+  "description": "Demo hoc npm",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "f8": "echo \"Hello F8\"",
+    "version": "node -v && npm -v"
+  },
+  "keywords": [],
+  "author": "Hoang An F8",
+  "license": "ISC",
+  "dependencies": {
+    "bootstrap": "^*",
+    "datejs": "^1.0.0-rc3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

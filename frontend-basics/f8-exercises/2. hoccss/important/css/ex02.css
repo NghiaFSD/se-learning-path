@@ -1,0 +1,19 @@
+/* .box {
+  padding: 30px;
+  color: #fff;
+} */
+
+.products,
+.news {
+  padding: 30px;
+  color: #fff;
+}
+
+.products {
+  background: gray;
+}
+
+.news {
+  background-color: green;
+  font-style: italic;
+}

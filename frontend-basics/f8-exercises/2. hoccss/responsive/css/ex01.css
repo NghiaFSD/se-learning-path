@@ -1,0 +1,39 @@
+body {
+  color: red;
+}
+
+@media screen and (max-width: 1400px) {
+  body {
+    color: green;
+  }
+}
+
+@media screen and (max-width: 1200px) {
+  body {
+    color: blueviolet;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  body {
+    color: blue;
+  }
+}
+
+/* @media all and (min-width: 576px) {
+  body {
+    color: green;
+  }
+}
+
+@media all and (min-width: 992px) {
+  body {
+    color: blueviolet;
+  }
+}
+
+@media all and (min-width: 1200px) {
+  body {
+    color: blue;
+  }
+} */

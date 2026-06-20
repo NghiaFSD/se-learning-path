@@ -1,0 +1,20 @@
+@mixin transition($property: all, $duration: 0.4s, $timingFunc: ease) {
+  transition: $duration $timingFunc;
+  transition-property: $property;
+}
+
+@mixin display($name: "") {
+  $prefix: "d-";
+
+  @if ($name != "") {
+    $prefix: $prefix + $name + "-";
+  }
+
+  .#{$prefix}none {
+    display: none;
+  }
+
+  .#{$prefix}block {
+    display: block;
+  }
+}

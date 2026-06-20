@@ -1,0 +1,52 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* .house-icon {
+  color: red;
+  font-size: 2rem;
+} */
+
+ul.social {
+  list-style: none;
+  width: 300px;
+  margin: 30px auto;
+}
+
+ul.social li a {
+  color: #333;
+  text-decoration: none;
+}
+
+ul.social li a::before {
+  font-family: "Font Awesome 6 Brands";
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: red;
+  color: #fff;
+  margin-right: 5px;
+  text-align: center;
+  line-height: 25px;
+}
+
+ul.social li.facebook a::before {
+  content: "\f39e";
+}
+
+ul.social li.twitter a::before {
+  content: "\f099";
+}
+
+ul.social li.google a::before {
+  content: "\f1a0";
+}
+
+/* p::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f00c";
+} */

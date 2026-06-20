@@ -1,0 +1,32 @@
+/* .content{
+    color: red;
+}
+
+.content:hover{
+    color: initial;
+}
+
+.title{
+    color: green;
+}
+
+.title::before{
+    content: "<";
+    color: initial;
+} */
+
+body{
+    color: blueviolet;
+}
+
+.content{
+    color: inherit;
+}
+
+.content p{
+    color: inherit;
+}
+
+.title{
+    color: inherit;
+}

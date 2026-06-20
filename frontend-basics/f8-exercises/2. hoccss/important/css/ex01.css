@@ -1,0 +1,35 @@
+/* h1 {
+  color: blueviolet !important;
+}
+
+#title {
+  color: green;
+}
+
+.title {
+  color: red;
+} */
+
+.box .content h2 {
+  color: green;
+}
+
+.content h2 {
+  color: red;
+}
+
+/*
+Độ ưu tiên trong CSS
+0. !important
+1. Inline
+2. Id
+3. Class
+4. Tagname
+
+Lưu ý: 
+- Hạn chế sử dụng !important (Trừ trường hợp bất khả kháng)
+- Nên sử dụng 1 số cách ưu tiên sau để xử lý
++ Theo thứ tự độ ưu tiên: inline => id => class => tagname
++ CSS viết dưới sẽ ghi đè CSS ở trên
++ Selector càng chi tiết => Độ ưu tiên càng cao
+*/

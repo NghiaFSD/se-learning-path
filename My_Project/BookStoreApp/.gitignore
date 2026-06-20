@@ -1,0 +1,64 @@
+# Build artifacts
+build/
+dist/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+nbproject/private/
+*.nbattrs
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Database
+*.bak
+*.log
+
+# Environment & Sensitive Files - NEVER COMMIT
+.env
+.env.local
+.env.*.local
+*.properties.local
+config.properties
+db.properties
+api.properties
+
+# Credentials & API Keys
+credentials.json
+secrets/
+*.key
+*.pem
+
+# Dependencies
+lib/
+out/
+
+# Test
+test-results/
+coverage/
+
+# Misc
+temp/
+tmp/
+*.tmp
+
+# NetBeans specific
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# Maven
+.mvn/

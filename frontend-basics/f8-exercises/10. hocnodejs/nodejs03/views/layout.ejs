@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>F8 - Học lập trình để đi làm</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <main class="py-3">
+      <div class="container">
+        <div class="row">
+          <div class="col-3">
+            <h3>Navigation</h3>
+            <ul class="nav flex-column">
+              <li class="nav-item">
+                <a href="/" class="nav-link">Trang chủ</a>
+              </li>
+              <li class="nav-item">
+                <a href="/users" class="nav-link">Quản lý người dùng</a>
+              </li>
+              <li class="nav-item">
+                <a href="/roles" class="nav-link">Quản lý vai trò</a>
+              </li>
+            </ul>
+            <hr />
+            <ul class="d-flex gap-2 list-unstyled">
+              <li>Chào bạn: <b><%= req.user.fullname %></b></li>
+              <li><a href="/auth/logout">Đăng xuất</a></li>
+            </ul>
+          </div>
+          <div class="col-9"><%- body %></div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+/* h3{
+    color: green;
+}
+
+h2{
+    color: red;
+}
+
+#title{
+    color: blueviolet;
+}
+
+.title{
+    color: yellow;
+} */
+
+
+/*
+Độ ưu tiên:
+0. !important
+1. inline
+2. id
+3. class
+4. tagname
+*/
+
+.content > .children > h1{
+    color: red;
+}
+
+.element > h1{
+    color: green;
+}
+
+.menu > li > a{
+    color: red;
+}
+
+h1.page-title.first#feature{
+    color: red;
+}
+
+h2.page-title#item.last{
+    color: blue;
+}
+
+body{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    line-height: 1.2;
+    font-size: 1rem; 
+}

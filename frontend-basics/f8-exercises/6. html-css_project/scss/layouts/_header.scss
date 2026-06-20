@@ -1,0 +1,146 @@
+.header {
+  padding: 20px 0;
+  box-shadow: 0px 2px 10px 0px rgba(0, 0, 0, 0.15);
+
+  .header-right {
+    display: flex;
+    justify-content: flex-end;
+
+    input[type="checkbox"] {
+      &:checked {
+        ~ .header-menu {
+          translate: 0;
+        }
+
+        ~ .menu-overlay {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+    }
+
+    .menu-overlay {
+      background: #00000079;
+      position: fixed;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      @include transition(opacity);
+    }
+
+    .header-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      background: $primaryColor;
+      min-width: 250px;
+      translate: -100%;
+      @include transition(translate);
+      ul {
+        display: block;
+        justify-content: flex-end;
+        padding: 20px;
+        li {
+          a {
+            display: block;
+            color: #fff;
+            padding: 10px 0;
+          }
+        }
+      }
+    }
+
+    .header-icon {
+      display: flex;
+      justify-content: space-between;
+      .cart-icon {
+        position: relative;
+        margin-right: 60px;
+        span {
+          position: absolute;
+          right: -7px;
+          top: -7px;
+          background: $secondaryColor;
+          color: #fff;
+          padding: 0 4px;
+          border-radius: 50%;
+        }
+      }
+    }
+  }
+
+  .menu-toggle {
+    font-size: 3rem;
+  }
+}
+
+//Responsive
+
+@media screen and (min-width: 992px) {
+  .header {
+    .header-right {
+      .menu-overlay {
+        display: none;
+      }
+      .header-menu {
+        translate: 0;
+        position: static;
+        background: none;
+
+        ul {
+          padding: 0;
+          display: flex;
+          li {
+            padding: 0 15px;
+            a {
+              font-weight: 600;
+              font-size: 1.5rem;
+
+              color: $textColor;
+              &.active {
+                color: $primaryColor;
+                border-bottom: 2px solid $primaryColor;
+              }
+              &:hover {
+                @extend .active;
+              }
+            }
+          }
+        }
+      }
+
+      .header-icon {
+        padding-left: 15px;
+        .cart-icon {
+          margin-right: 30px;
+        }
+      }
+    }
+  }
+}
+
+@media screen and (min-width: 1440px) {
+  .header {
+    padding-bottom: 0;
+    .header-right {
+      .header-menu {
+        ul {
+          li {
+            padding: 0 30px;
+            a {
+              font-size: 2rem;
+              padding: 50px 0;
+            }
+          }
+        }
+      }
+      .header-icon {
+        padding-left: 30px;
+        .cart-icon {
+          margin-right: 60px;
+        }
+      }
+    }
+  }
+}

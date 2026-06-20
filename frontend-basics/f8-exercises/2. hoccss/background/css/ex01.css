@@ -1,0 +1,23 @@
+body{
+    /* background-color: antiquewhite;
+    background-image: url('../images/img01.jpg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: top left;
+    background-attachment: fixed; */
+    background: url('../images/img01.jpg') no-repeat top left / cover fixed antiquewhite;
+    /* background-size: cover; */
+    height: 2000px;
+}
+
+/* .content p{
+    background-color: rgba(255, 0, 0, 0.205);
+    color: #fff;
+} */
+/* 
+.banner{
+    height: 400px;
+    background-image: url('../images/img01.jpg');
+    background-repeat: no-repeat;
+    background-size: cover;
+} */

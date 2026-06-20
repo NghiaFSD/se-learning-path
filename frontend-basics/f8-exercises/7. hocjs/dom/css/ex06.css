@@ -1,0 +1,60 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* .modal-box {
+  display: none;
+}
+
+.modal-box.show {
+  display: block;
+} */
+
+.modal-box .overlay {
+  background: #0000009c;
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: 0.3s linear;
+  transition-property: opacity, visibility;
+}
+
+.modal-box .modal {
+  max-width: 600px;
+  margin: 30px auto;
+  background: #fff;
+  padding: 15px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: -100%;
+  z-index: 1;
+  transition: top 0.3s linear;
+}
+
+.modal-box.show .modal {
+  top: 30px;
+}
+
+.modal-box.show .overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-box .modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #ccc;
+}
+
+.modal-box .modal .modal-header .close {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.modal-box .modal .modal-body {
+  padding: 20px 0;
+}

@@ -1,0 +1,19 @@
+.about{
+    width: 70%;
+    text-align: left;
+    text-align-last: right;
+}
+
+/* .btn-wrap{
+    text-align: center;
+} */
+
+.btn{
+    display: block;
+    margin: 0 auto;
+}
+
+.span{
+    display: block;
+    border: 1px solid red;
+}

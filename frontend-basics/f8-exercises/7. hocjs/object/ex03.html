@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .posts .post-item {
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 15px;
+      }
+      .posts .post-item img {
+        width: 400px;
+        height: auto;
+        float: left;
+        margin-right: 10px;
+      }
+
+      .posts .post-item img.right {
+        float: right;
+        margin-left: 10px;
+        margin-right: 0;
+      }
+
+      .posts .post-item::after {
+        content: "";
+        display: block;
+        clear: both;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="js/ex03.js"></script>
+  </body>
+</html>

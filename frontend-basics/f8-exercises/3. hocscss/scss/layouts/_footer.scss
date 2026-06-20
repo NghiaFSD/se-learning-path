@@ -1,0 +1,24 @@
+.footer {
+    $property: padding;
+    $selector: '.text';
+    $size: 18;
+    $width: 50;
+    .copyright {
+       #{$property}: 10px; 
+       text: {
+        align: center;
+        decoration: none;
+        transform: uppercase;
+       }
+       font: {
+            family: Roboto;
+            size: 1.2rem;
+       }
+
+       #{$selector} {
+        font-style: italic;
+        font-size: #{$size}rem;
+        width: $width * 1%;
+       }
+    }
+}

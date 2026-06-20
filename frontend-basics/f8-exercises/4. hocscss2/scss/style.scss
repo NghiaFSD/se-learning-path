@@ -1,0 +1,57 @@
+@import 'variables';
+@import 'mixins';
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui;
+}
+
+.h1 {
+    color: red;
+}
+
+.h2 {
+    font-size: 30px;
+    @extend .h1;
+}
+
+%textItalic {
+    font-style: italic
+}
+
+.box {
+    @include size(200px);
+    @include rounded(10px, 20px, 30px, 40px);
+    @include flexCenter;
+    @extend .h2;
+    @extend %textItalic;
+    background: orange;
+}
+
+// Mixin: gridContainer($columns, $spacing)
+
+.container {
+    background: #ccc;
+    @include gridContainer(4, 20px);
+
+    > .item {
+        background: orange;
+        font-size: 30px;
+        font-weight: 600;
+    }
+}
+
+.list {
+    @include gridContainer(3, 20px);
+
+    > .list-item {
+        background: green;
+        font-size: 30px;
+        font-weight: 600;
+    }
+}

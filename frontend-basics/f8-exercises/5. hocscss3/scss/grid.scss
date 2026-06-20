@@ -1,0 +1,155 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  outline: 0;
+}
+
+:root {
+  --container-width: 1200px;
+  --container-padding: 15px;
+  --max-column: 12;
+  --column-space: 20px;
+  --spacer: 1rem;
+}
+
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+}
+
+.justify-content-start {
+  justify-content: flex-start;
+}
+
+.justify-content-center {
+  justify-content: center;
+}
+
+.justify-content-end {
+  justify-content: flex-end;
+}
+
+.align-items-start {
+  align-items: flex-start;
+}
+
+.align-items-center {
+  align-items: center;
+}
+
+.align-items-end {
+  align-items: flex-end;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 calc(-1 * var(--column-space) / 2);
+}
+
+.row.g-0 {
+  margin: 0;
+}
+
+.row.g-0 > [class^="col-"] {
+  padding: 0;
+  margin: 0;
+}
+
+.row.g-1,
+.row.g-2,
+.row.g-3,
+.row.g-4,
+.row.g-5 {
+  margin: 0 calc(-1 * var(--column-space) / 2);
+}
+
+.row.g-1 {
+  --column-space: calc(0.25 * var(--spacer));
+}
+
+.row.g-2 {
+  --column-space: calc(0.5 * var(--spacer));
+}
+
+.row.g-3 {
+  --column-space: calc(1 * var(--spacer));
+}
+
+.row.g-4 {
+  --column-space: calc(1.5 * var(--spacer));
+}
+
+.row.g-5 {
+  --column-space: calc(3 * var(--spacer));
+}
+
+.row.g-1 > [class^="col-"],
+.row.g-2 > [class^="col-"],
+.row.g-3 > [class^="col-"],
+.row.g-4 > [class^="col-"],
+.row.g-5 > [class^="col-"] {
+  padding: 0 calc(var(--column-space) / 2);
+  margin-bottom: var(--column-space);
+}
+
+.row.g-1 > [class^="col-"] {
+  --column-space-gutter: calc(0.25 * var(--spacer));
+}
+
+.row.g-2 > [class^="col-"] {
+  --column-space-gutter: calc(0.5 * var(--spacer));
+}
+
+.row.g-3 > [class^="col-"] {
+  --column-space-gutter: calc(1 * var(--spacer));
+}
+
+.row.g-4 > [class^="col-"] {
+  --column-space-gutter: calc(1.5 * var(--spacer));
+}
+
+.row.g-5 > [class^="col-"] {
+  --column-space-gutter: calc(3 * var(--spacer));
+}
+
+.row [class^="col-"] {
+  --column-width: calc(100% / (var(--max-column) / var(--column-number)));
+  flex-basis: var(--column-width);
+  max-width: var(--column-width);
+  padding: 0 calc(var(--column-space) / 2);
+  margin-bottom: var(--column-space);
+}
+
+//Xử lý logic grid column
+
+$breakpoints: (
+  sm: 576,
+  md: 768,
+  lg: 992,
+  xl: 1200,
+  xxl: 1400,
+);
+
+@mixin column($name: "") {
+  @for $i from 1 through 12 {
+    .col-#{$name}#{$i} {
+      --column-number: #{$i};
+    }
+  }
+}
+
+@include column();
+
+@each $name, $breakpoint in $breakpoints {
+  @media screen and (min-width: #{$breakpoint}px) {
+    @include column($name + "-");
+    // @for $i from 1 through 12 {
+    //   .col-#{$name}-#{$i} {
+    //     --column-number: #{$i};
+    //   }
+    // }
+  }
+}

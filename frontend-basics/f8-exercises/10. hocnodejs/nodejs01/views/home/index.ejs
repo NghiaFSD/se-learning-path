@@ -1,0 +1,12 @@
+<h1>Học Express không khó</h1>
+<% if (check) { %>
+<h2><%- title %></h2>
+<% } %>
+<hr />
+<% users.forEach((item) => { %>
+<h3><%= item %></h3>
+<% }) %>
+
+<hr />
+
+<%- include('./banner', {title2: title}) %>

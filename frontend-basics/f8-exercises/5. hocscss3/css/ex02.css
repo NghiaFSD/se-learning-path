@@ -1,0 +1,19 @@
+.header {
+  padding: 20px 0;
+}
+.header .header__inner {
+  position: relative;
+  z-index: 10;
+}
+@media screen and (max-width: 767px) {
+  .header .header__inner {
+    position: static;
+  }
+}
+@media screen and (max-width: 767px) {
+  .header {
+    padding: 0;
+  }
+}
+
+/*# sourceMappingURL=ex02.css.map */

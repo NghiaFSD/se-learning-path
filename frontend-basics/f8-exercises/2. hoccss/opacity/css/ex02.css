@@ -1,0 +1,21 @@
+/* html {
+    filter: grayscale(1);
+} */
+
+* {
+    filter: grayscale(1);
+}
+
+/* .gallery img {
+    filter: grayscale(1);
+}
+
+.gallery img:hover {
+    filter: initial;
+    opacity: .8;
+}
+
+.map iframe {
+    width: 100%;
+    filter: grayscale(1);
+} */

@@ -1,0 +1,65 @@
+/*Comment css*/
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 10px;
+}
+
+body {
+  font-family: "Courier New", Courier, monospace;
+  line-height: 1.5;
+  font-size: 1.6rem;
+  color: #333;
+}
+
+.header .topbar {
+  padding: 10px 0;
+  background: black;
+}
+.header .topbar .divider {
+  background: yellow;
+  height: 4px;
+}
+.header .topbar .topbar-left {
+  list-style: none;
+}
+.header .topbar .topbar-right {
+  list-style: none;
+  text-align: right;
+}
+.header .header-inner {
+  padding: 20px 0;
+}
+.header .header-inner .menu > li > a {
+  display: block;
+}
+.header .header-inner .menu > li > a:hover {
+  color: red;
+  text-decoration: none;
+}
+.header .header-inner .menu > li > a:hover::after {
+  content: "";
+}
+.header .header-inner .menu > li > a::before {
+  content: "";
+}
+
+.footer .copyright {
+  padding: 10px;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-family: Roboto;
+  font-size: 1.2rem;
+}
+.footer .copyright .text {
+  font-style: italic;
+  font-size: 18rem;
+  width: 50%;
+}
+
+/*# sourceMappingURL=style.css.map */

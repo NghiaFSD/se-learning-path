@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form action="">
+      <div>
+        <label for="fullname">Họ tên</label>
+        <input
+          type="text"
+          placeholder="Vui lòng nhập họ và tên..."
+          name="fullname"
+          id="fullname"
+          required
+        />
+      </div>
+
+      <div>
+        <label for="email">Email</label>
+        <input
+          type="email"
+          placeholder="Vui lòng nhập email..."
+          name="email"
+          id="email"
+          value="hoangan.web@gmail.com"
+          disabled
+        />
+      </div>
+
+      <div>
+        <label for="password">Mật khẩu</label>
+        <input
+          type="password"
+          placeholder="Vui lòng nhập mật khẩu..."
+          name="password"
+          id="password"
+        />
+      </div>
+
+      <div>
+        <label for="age">Tuổi</label>
+        <input
+          type="number"
+          placeholder="Vui lòng nhập tuổi..."
+          name="age"
+          id="age"
+          step="0.1"
+          min="20"
+        />
+      </div>
+
+      <div>
+        <label for="thumb">Ảnh đại diện</label>
+        <input type="file" name="thumb" id="thumb" multiple />
+      </div>
+
+      <div>
+        <label for="birthday">Sinh nhật</label>
+        <input type="date" name="birthday" id="birthday" />
+      </div>
+
+      <div>
+        <label for="price">Giá</label>
+        <input type="range" name="price" id="prices" />
+      </div>
+
+      <div>
+        <label> Giới tính </label>
+        <label>
+          <input type="radio" name="gender" value="0" checked /> Không xác định
+        </label>
+        <label> <input type="radio" name="gender" value="1" /> Nam </label>
+        <label> <input type="radio" name="gender" value="2" /> Nữ </label>
+      </div>
+
+      <div>
+        <label> Sở thích </label>
+        <label> <input type="checkbox" name="sothich" value="1" /> Code </label>
+        <label>
+          <input type="checkbox" name="sothich" value="2" /> Fix bugs
+        </label>
+        <label>
+          <input type="checkbox" name="sothich" value="3" checked /> Ngủ
+        </label>
+      </div>
+
+      <div>
+        <label for="message"> Lời nhắn </label>
+        <textarea
+          name="message"
+          id="message"
+          placeholder="Lời nhắn..."
+          cols="30"
+          rows="5"
+          readonly
+        >
+Tôi học lập trình</textarea
+        >
+      </div>
+
+      <div>
+        <label for="provinces">Tỉnh/Thành phố</label>
+        <select>
+          <option value="0" hidden>Chọn Tỉnh/Thành phố</option>
+          <optgroup label="Miền Bắc">
+            <option value="1">Hà Nội</option>
+          </optgroup>
+          <optgroup label="Miền Trung">
+            <option value="2">Đà Nẵng</option>
+          </optgroup>
+          <optgroup label="Miền Nam">
+            <option value="3">Hồ Chí Minh</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <button type="submit">Submit</button>
+
+    </form>
+
+    <h1 class="category-baiviet"></h1>
+  </body>
+</html>

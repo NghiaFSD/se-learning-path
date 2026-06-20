@@ -1,0 +1,18 @@
+<h1>Đăng nhập</h1>
+<form action="" method="post">
+  <div>
+    <label for="">Email</label>
+    <div>
+      <input type="text" name="email" placeholder="Email..." />
+    </div>
+    <%= getError(errors, 'email') %>
+  </div>
+  <div>
+    <label for="">Password</label>
+    <div>
+      <input type="password" name="password" placeholder="Password..." />
+    </div>
+    <%= getError(errors, 'password') %>
+  </div>
+  <button>Login</button>
+</form>

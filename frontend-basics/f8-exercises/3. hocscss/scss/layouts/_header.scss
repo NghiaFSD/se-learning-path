@@ -1,0 +1,44 @@
+
+.header {
+    $padding: 10px; //Biến cục bộ
+    .topbar {
+        padding: $padding 0;
+        background: black;
+
+        .divider {
+            background: yellow;
+            height: 4px;
+        }
+
+        .topbar-left {
+            list-style: none;
+        }
+
+        .topbar-right {
+            list-style: none;
+            text-align: right;
+          
+        }
+    }
+
+    .header-inner {
+        padding: 20px 0;
+        .menu {
+            > li {
+                > a {
+                    display: block;
+                    &:hover {
+                        color: red;
+                        text-decoration: none;
+                        &::after {
+                            content: '';
+                        }
+                    }
+                    &::before {
+                        content: '';
+                    }
+                }
+            }
+        }
+    }
+}

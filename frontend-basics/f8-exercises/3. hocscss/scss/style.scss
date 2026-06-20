@@ -1,0 +1,26 @@
+//Comment scss
+/*Comment css*/
+
+//Biến trong SCSS
+//Nên đặt tên theo cú pháp camelCase
+//Ký tự đầu tiên từ chữ thứ 2 trở đi sẽ viết hoa
+
+//Import Base
+@import 'parts/variables';
+@import 'parts/reset';
+@import 'parts/mixin';
+
+//Import Layout
+@import 'layouts/header';
+@import 'layouts/footer';
+@import 'layouts/breadcrums';
+
+//Import Pages
+
+//1. Home
+@import 'pages/home/slide.scss';
+@import 'pages/home/about.scss';
+
+//2. About
+@import 'pages/about/title';
+@import 'pages/about/content';

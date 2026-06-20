@@ -1,0 +1,16 @@
+h1{
+    color: blueviolet;
+    background: gray;
+}
+
+/* Header -- Begin */
+.header{
+    padding: 20px 0;
+}
+/* Header -- End */
+
+/* Main -- Begin */
+body{
+    font-family: 'Courier New', Courier, monospace;
+}
+/* Main -- End */

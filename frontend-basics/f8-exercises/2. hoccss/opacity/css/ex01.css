@@ -1,0 +1,4 @@
+.box:hover img {
+    opacity: .5;
+    filter: brightness(128%) hue-rotate(211deg) saturate(491%) contrast(365%) invert(27%);
+}

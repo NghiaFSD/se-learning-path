@@ -1,0 +1,59 @@
+// $columnNumber: 24;
+
+// @for $i from 1 through $columnNumber {
+//   .col-#{$i} {
+//     --column-number: #{$i};
+//     padding: 0 $i * 2px;
+//   }
+// }
+
+//Vòng lặp @each
+
+// $sizes: 0, 25, 50, 75, 100;
+// @each $size in $sizes {
+//   .w-#{$size} {
+//     @if ($size == 0) {
+//       width: 0;
+//     } @else {
+//       width: $size * 1%;
+//     }
+//   }
+// }
+
+// $sizes: (small, 20, normal), (medium, 40, italic), (large, 60, bold);
+
+// @each $name, $size, $style in $sizes {
+//   .col-#{$name} {
+//     width: #{$size}px;
+//     @if ($style!= "bold") {
+//       font-style: $style;
+//     } @else {
+//       font-weight: bold;
+//     }
+//   }
+// }
+
+// $size: (small, 40), (medium, 60), (large, 80);
+
+$sizes: (
+  small: 40,
+  medium: 60,
+  large: 80,
+);
+
+@each $name, $size in $sizes {
+  .col-#{$name} {
+    width: #{$size}px;
+  }
+}
+
+/*
+Toán tử so sánh
+
+1. Bằng: ==
+2. Khác: !=
+3. Lớn hơn: >
+4. Nhỏ hơn: <
+5. Lớn hơn hoặc bằng: >=
+6. Nhỏ hơn hoặc bằng: <=
+*/

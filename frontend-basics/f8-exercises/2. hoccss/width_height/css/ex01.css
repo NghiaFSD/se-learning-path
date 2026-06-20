@@ -1,0 +1,21 @@
+body{
+    height: 2000px;
+   
+}
+.content{
+    border: 1px solid red;
+    background: green;
+    width: 50%;
+    height: 150px;
+}
+
+.content .box{
+    background: blueviolet;
+    /* width: 100vw; */
+    height: 100vh;
+}
+
+/*
+vw = viewport width
+vh = viewport height
+*/
