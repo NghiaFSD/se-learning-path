@@ -1,0 +1,2 @@
+# Ignore local credentials and API keys
+java-web-development/S-COMS/src/java/com/diabetes/monitoring/util/gemini-local.properties
