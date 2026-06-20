@@ -1,0 +1,42 @@
+# 🇯🇵 JPD113: Japanese 1 Core Foundation (Lessons 1 - 13)
+
+This notebook encapsulates the foundational grammar structures, vocabulary paradigms, and particles covered in the JPD113 course at FPT University.
+
+---
+
+## 📝 1. Core Grammar Structures
+
+### 🔹 Lesson 1 - 3: Self-Introduction & Demonstrative Pronouns
+- **N1 は N2 です (N1 wa N2 desu):** N1 is N2 (Identity/Occupation/Nationality).
+- **これ / それ / あれ は N です:** This / That / Over there is N.
+- **この / その / あの + N は...:** This / That / Over there [Noun] is...
+- **ここ / そこ / あそこ (Places):** Here / There / Over there.
+
+### 🔹 Lesson 4 - 6: Time, Verbs, and Objects
+- **Time Representation:** `～時 ～分 です` (Time) | `～曜日` (Days of the week).
+- **V-ます / V-ました (Verb Tenses):** Present/Future vs. Past.
+- **N (Place) へ 行きます/来ます/帰ります:** Going/Coming/Returning to a place.
+- **N (Object) を V-ます:** Expressing a direct object action (e.g., ご飯を食べます).
+- **N (Place) で V-ます:** Action occurring at a specific location.
+- **V-ませんか (V-masenka):** "Won't you do...?" (Inviting/Suggesting an action).
+
+### 🔹 Lesson 7 - 9: Tools, Giving/Receiving, and Adjectives
+- **N (Tool) で V-ます:** Doing an action by means of a tool/language.
+- **Giving & Receiving:** 
+  - `N1 は N2 に N3 を あげます` (N1 gives N3 to N2).
+  - `N1 は N2 に/から N3 を もらいます` (N1 receives N3 from N2).
+- **Adjectives (な-adj & い-adj):** Modifying nouns and sentence endings.
+  - Present Negative: `な-adj じゃありません` | `い-adj (drop い) くないです`.
+- **N は N が 好きです/上手です:** Expressing preferences and skills.
+
+### 🔹 Lesson 10 - 13: Existence, Quantifiers, Comparisons, and Desires
+- **Existence (います / あります):**
+  - `N (Place) に N (Inanimate) が あります` (There is an object).
+  - `N (Place) に N (Animate) が います` (There is a person/animal).
+- **Comparisons:** 
+  - `N1 は N2 より Adj です` (N1 is more Adj than N2).
+  - `N1 と N2 と どちらが Adj ですか` (Which is more Adj, N1 or N2?).
+- **Desires & Intentions:**
+  - `N が 欲しいです` (I want a Noun).
+  - `V-たいです` (I want to do a Verb - drop ~masu).
+  - `N (Place) へ V (drop ~masu) に 行きます` (Going somewhere to do something).

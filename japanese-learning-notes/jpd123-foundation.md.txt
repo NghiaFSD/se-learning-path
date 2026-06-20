@@ -1,0 +1,59 @@
+# 🇯🇵 JPD123: Japanese 2 Intermediate Navigation (Lessons 14 - 25)
+
+This notebook encapsulates advanced verb conjugations, compound sentence structures, and plain forms covered in the JPD123 course at FPT University.
+
+---
+
+## 📝 1. Major Verb Conjugations (Thể Biến Đổi Động Từ)
+
+### 🔹 Thể て (Te-form) - Lesson 14
+*(Refer to `te-form-conjugation.md` for deep-dive rules)*
+- **Usage:** Used for requests (`～てください`), continuous states (`～ています`), permissions (`～てもいいです`), and prohibitions (`～てはいけません`).
+
+### 🔹 Thể ない (Nai-form / Negative Plain) - Lesson 17
+- **Group 1:** Change `~i` sound to `~a` sound + `nai` (e.g., *kaimasu* $\rightarrow$ *kawanai*).
+- **Group 2:** Drop `~masu` + `nai` (e.g., *tabemasu* $\rightarrow$ *tabenai*).
+- **Group 3:** *shimasu* $\rightarrow$ *shinai* | *kimasu* $\rightarrow$ *konai*.
+- **Grammar Patterns:**
+  - `V-ないで ください` (Please don't do...).
+  - `V-なければ なりません` (Must do / Obligation).
+  - `V-なくても いいです` (No need to do...).
+
+### 🔹 Thể 辞書形 (Dictionary Form / Present Plain) - Lesson 18
+- **Group 1:** Change `~i` sound to `~u` sound (e.g., *ikimasu* $\rightarrow$ *iku*).
+- **Group 2:** Drop `~masu` + `ru` (e.g., *tabemasu* $\rightarrow$ *taberu*).
+- **Group 3:** *shimasu* $\rightarrow$ *suru* | *kimasu* $\rightarrow$ *kuru*.
+- **Grammar Patterns:**
+  - `V-辞書形 ことができます` (Can do / Ability).
+  - `趣味/夢は V-辞書形 ことです` (My hobby/dream is...).
+  - `V-辞書形 / Nの / Time まえに、～` (Before doing something...).
+
+### 🔹 Thể た (Ta-form / Past Plain) - Lesson 19
+- **Conjugation Rule:** Exactly identical to the **て-form**, but replace `て/で` with `た/だ`.
+- **Grammar Patterns:**
+  - `V-た ことがあります` (Have experienced doing something before).
+  - `V-た り、V-た り します` (Listing actions randomly).
+
+---
+
+## 📝 2. Advanced Sentence Patterns
+
+### 🔹 Thể Thông Thường (Plain Form / Futsuukei) - Lesson 20
+- The foundational system used with friends, family, and as sub-clauses in advanced grammar.
+
+### 🔹 Clauses & Modifications (Lesson 21 - 23)
+- **Opinion:** `[Plain Form] と 思います` (I think that...).
+- **Quotation:** `[Sentence] と 言いました` (He/She said that...).
+- **Noun Modification:** Using a short-form verb phrase to modify a noun (e.g., *Watashi ga tsukutta keeki* - The cake that I made).
+- **Conditionals (とき & と):**
+  - `V-辞書形 / V-た とき、～` (When doing...).
+  - `V-辞書形 と、～` (If/Whenever this happens, the consequence naturally follows).
+
+### 🔹 Giving & Receiving Actions (Lesson 24)
+- `V-て あげます` (Doing a favor for someone).
+- `V-て もらいます` (Receiving a favor from someone).
+- `V-て くれます` (Someone doing a favor for me/my family).
+
+### 🔹 Conditionals (Lesson 25)
+- `V-たら、～` (If / After doing something...).
+- `V-て も、～` (Even if...).
