@@ -5,13 +5,6 @@
         <group>
             <file>file:/D:/Ky5/SWP391/SWP_Project_Hieu/SWP_Project/web/js/chat.js</file>
         </group>
-        <group name="ÔN_PRJ_PE">
-            <file>file:/D:/ky5/SWP391/SWP_Project/src/java/com/diabetes/monitoring/util/GeminiConfigUtil.java</file>
-            <file>file:/D:/ky5/SWP391/SWP_Project/src/java/com/diabetes/monitoring/servlet/AIRecommendationServlet.java</file>
-            <file>file:/D:/ky5/SWP391/SWP_Project/src/java/com/diabetes/monitoring/servlet/AdminServlet.java</file>
-            <file>file:/D:/ky5/SWP391/SWP_Project/web/admin/dashboard.jsp</file>
-            <file>file:/D:/ky5/SWP391/SWP_Project/web/admin/users.jsp</file>
-            <file>file:/D:/ky5/SWP391/SWP_Project/web/admin/health-records.jsp</file>
-        </group>
+        <group name="ÔN_PRJ_PE"/>
     </open-files>
 </project-private>

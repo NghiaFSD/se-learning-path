@@ -286,8 +286,8 @@ public class AdminDAO {
     public List<Map<String, Object>> getTodayRevenueByServiceType() {
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT "
-                + "COALESCE(SUM(CASE WHEN ms.service_type = 'Examination' THEN id.line_total ELSE 0 END), 0) AS exam_revenue, "
-                + "COALESCE(SUM(CASE WHEN ms.service_type = 'Lab_Test' THEN id.line_total ELSE 0 END), 0) AS lab_revenue "
+                + "COALESCE(SUM(CASE WHEN ms.service_type = 'Examination' THEN id.quantity * id.price ELSE 0 END), 0) AS exam_revenue, "
+                + "COALESCE(SUM(CASE WHEN ms.service_type = 'Lab_Test' THEN id.quantity * id.price ELSE 0 END), 0) AS lab_revenue "
                 + "FROM Invoice i "
                 + "JOIN Invoice_Detail id ON id.invoice_id = i.invoice_id "
                 + "JOIN Medical_Service ms ON ms.service_id = id.service_id "
@@ -567,11 +567,10 @@ public class AdminDAO {
 
     public List<Map<String, Object>> getRecentPaidInvoicesToday(int limit) {
         List<Map<String, Object>> rows = new ArrayList<>();
-        String sql = "SELECT TOP (?) i.invoice_id, a.full_name AS patient_name, i.final_amount, "
+        String sql = "SELECT TOP (?) i.invoice_id, p.full_name AS patient_name, i.final_amount, "
                 + "FORMAT(i.created_at, 'dd/MM/yyyy HH:mm') AS payment_time "
                 + "FROM Invoice i "
-                + "JOIN Appointment ap ON ap.appointment_id = i.appointment_id "
-                + "JOIN Account a ON a.account_id = ap.patient_id "
+                + "JOIN Patient p ON p.patient_id = i.patient_id "
                 + "WHERE LOWER(i.status) = 'paid' AND CAST(i.created_at AS DATE) = CAST(GETDATE() AS DATE) "
                 + "ORDER BY i.created_at DESC";
 
@@ -1067,18 +1066,15 @@ public class AdminDAO {
                 ? "FORMAT(i.created_at, 'yyyy-MM-dd') = ?"
                 : "FORMAT(i.created_at, 'yyyy-MM') = ?";
 
-        // Check if bhyt_deduction column exists
-        boolean hasBhytDeduction = hasColumn("Invoice", "bhyt_deduction");
-
-        // Query invoices - handle missing bhyt_deduction column
-        String bhytCol = hasBhytDeduction ? "i.bhyt_deduction" : "CAST(0 AS DECIMAL(18,2))";
-        String invoiceSql = "SELECT i.invoice_id, a.full_name AS patient_name, "
+        // SWP.sql uses insurance_deduction. Keep bhytDeduction as the JSP response key.
+        boolean hasInsuranceDeduction = hasColumn("Invoice", "insurance_deduction");
+        String bhytCol = hasInsuranceDeduction ? "i.insurance_deduction" : "CAST(0 AS DECIMAL(18,2))";
+        String invoiceSql = "SELECT i.invoice_id, p.full_name AS patient_name, "
                 + "i.total_amount, " + bhytCol + " AS bhyt_deduction, i.final_amount, "
                 + "FORMAT(i.created_at, 'yyyy-MM-dd') AS payment_date "
                 + "FROM Invoice i "
-                + "JOIN Appointment ap ON ap.appointment_id = i.appointment_id "
-                + "JOIN Account a ON a.account_id = ap.patient_id "
-                + "WHERE i.status = 'Paid' AND " + periodFilter + " "
+                + "JOIN Patient p ON p.patient_id = i.patient_id "
+                + "WHERE LOWER(i.status) = 'paid' AND " + periodFilter + " "
                 + "ORDER BY i.created_at DESC";
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -1149,7 +1145,8 @@ public class AdminDAO {
         }
 
         String sql = "SELECT id.invoice_detail_id, id.invoice_id, id.service_id, "
-                + "ms.service_name, id.quantity, id.unit_price, id.line_total "
+                + "ms.service_name, id.quantity, id.price AS unit_price, "
+                + "CAST(id.quantity * id.price AS DECIMAL(18,2)) AS line_total "
                 + "FROM Invoice_Detail id "
                 + "LEFT JOIN Medical_Service ms ON ms.service_id = id.service_id "
                 + "WHERE id.invoice_id = ? "
@@ -1432,3 +1429,6 @@ public class AdminDAO {
         }
     }
 }
+
+
+
