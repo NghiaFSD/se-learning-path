@@ -56,6 +56,22 @@ public final class GeminiConfigUtil {
                 getLocalConfig("GEMINI_API_KEY"));
     }
 
+    public static List<String> getSchedulingApiKeys() {
+        return collectApiKeys(
+                System.getenv("SCHEDULING_GEMINI_API_KEYS"),
+                System.getenv("SCHEDULING_GEMINI_API_KEY"),
+                getLocalConfig("SCHEDULING_GEMINI_API_KEYS"),
+                getLocalConfig("SCHEDULING_GEMINI_API_KEY"),
+                System.getenv("RECOMMENDATION_GEMINI_API_KEYS"),
+                System.getenv("RECOMMENDATION_GEMINI_API_KEY"),
+                getLocalConfig("RECOMMENDATION_GEMINI_API_KEYS"),
+                getLocalConfig("RECOMMENDATION_GEMINI_API_KEY"),
+                System.getenv("GEMINI_API_KEYS"),
+                System.getenv("GEMINI_API_KEY"),
+                getLocalConfig("GEMINI_API_KEYS"),
+                getLocalConfig("GEMINI_API_KEY"));
+    }
+
     public static String getRecommendationModel() {
         return normalizeModelName(firstNonBlank(
                 System.getenv("RECOMMENDATION_GEMINI_MODEL"),
@@ -74,6 +90,17 @@ public final class GeminiConfigUtil {
                 DEFAULT_MODEL));
     }
 
+    public static String getSchedulingModel() {
+        return normalizeModelName(firstNonBlank(
+                System.getenv("SCHEDULING_GEMINI_MODEL"),
+                getLocalConfig("SCHEDULING_GEMINI_MODEL"),
+                System.getenv("RECOMMENDATION_GEMINI_MODEL"),
+                getLocalConfig("RECOMMENDATION_GEMINI_MODEL"),
+                System.getenv("GEMINI_MODEL"),
+                getLocalConfig("GEMINI_MODEL"),
+                DEFAULT_MODEL));
+    }
+
     public static List<String> getRecommendationModelCandidates() {
         return collectModelCandidates(
                 System.getenv("RECOMMENDATION_GEMINI_MODEL"),
@@ -86,6 +113,16 @@ public final class GeminiConfigUtil {
         return collectModelCandidates(
                 System.getenv("ANTIFRAUD_GEMINI_MODEL"),
                 getLocalConfig("ANTIFRAUD_GEMINI_MODEL"),
+                System.getenv("GEMINI_MODEL"),
+                getLocalConfig("GEMINI_MODEL"));
+    }
+
+    public static List<String> getSchedulingModelCandidates() {
+        return collectModelCandidates(
+                System.getenv("SCHEDULING_GEMINI_MODEL"),
+                getLocalConfig("SCHEDULING_GEMINI_MODEL"),
+                System.getenv("RECOMMENDATION_GEMINI_MODEL"),
+                getLocalConfig("RECOMMENDATION_GEMINI_MODEL"),
                 System.getenv("GEMINI_MODEL"),
                 getLocalConfig("GEMINI_MODEL"));
     }

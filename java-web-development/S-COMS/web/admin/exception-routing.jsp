@@ -1,13 +1,20 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
+<%--
+    Trang Điều phối khẩn cấp:
+    - Xử lý ca khám bị kẹt/ngoại lệ vận hành
+    - Tái phân bác sĩ thủ công theo chuyên khoa khả dụng
+--%>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Điều phối khẩn cấp và xử lý sự cố - S-COMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -76,12 +83,13 @@
                     <input type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
                     <input type="hidden" name="appointmentId" value="${selectedQueueItem.appointmentId}">
                     <div class="col-md-8">
-                        <label class="form-label">Chọn bác sĩ tái điều phối</label>
-                        <select class="form-select" name="targetDoctorId" required>
+                        <label class="form-label">Chọn bác sĩ tái điều phối (có thể chọn nhiều)</label>
+                        <select class="form-select" name="targetDoctorId" multiple required size="5">
                             <c:forEach var="d" items="${candidateDoctors}">
                                 <option value="${d.doctorId}">${d.fullName} - ${d.department}</option>
                             </c:forEach>
                         </select>
+                        <small class="text-muted">Ctrl + Click để chọn nhiều bác sĩ. Bệnh nhân sẽ được phân bác sĩ đầu tiên trong danh sách.</small>
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
                         <button type="submit" class="btn btn-danger w-100">Xác nhận tái điều phối</button>

@@ -1,5 +1,12 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+
+<%--
+    Trang Báo cáo Admin:
+    - Tổng hợp doanh thu và lượt khám theo ngày/tháng/năm
+    - Cho phép drill-down chi tiết hóa đơn và lịch hẹn theo kỳ
+--%>
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -7,9 +14,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Báo cáo Doanh thu và Lượt khám - S-COMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .report-chart-panel {
+            position: relative;
+            height: 320px;
+            min-height: 320px;
+        }
+
+        .report-table-scroll {
+            max-height: 470px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+        }
+
+        .report-table-scroll table {
+            margin-bottom: 0;
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .report-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8f9fa;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+
+        .report-chart-panel canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Table cell styling */
+        .report-table-scroll table tbody td {
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .report-table-scroll table tbody td button {
+            white-space: nowrap;
+        }
+
+        /* Column sizing for invoice table */
+        .report-table-scroll table thead th:nth-child(1),
+        .report-table-scroll table tbody td:nth-child(1) {
+            width: 10%;
+        }
+
+        .report-table-scroll table thead th:nth-child(2),
+        .report-table-scroll table tbody td:nth-child(2) {
+            width: 18%;
+        }
+
+        .report-table-scroll table thead th:nth-child(3),
+        .report-table-scroll table tbody td:nth-child(3) {
+            width: 15%;
+        }
+
+        .report-table-scroll table thead th:nth-child(4),
+        .report-table-scroll table tbody td:nth-child(4) {
+            width: 15%;
+        }
+
+        .report-table-scroll table thead th:nth-child(5),
+        .report-table-scroll table tbody td:nth-child(5) {
+            width: 15%;
+        }
+
+        .report-table-scroll table thead th:nth-child(6),
+        .report-table-scroll table tbody td:nth-child(6) {
+            width: 15%;
+        }
+
+        .report-table-scroll table thead th:nth-child(7),
+        .report-table-scroll table tbody td:nth-child(7) {
+            width: 12%;
+        }
+
+        @media (max-width: 992px) {
+            .report-chart-panel {
+                height: 280px;
+                min-height: 280px;
+            }
+        }
+    </style>
 </head>
 <body class="bg-light">
 <div class="container py-4">
@@ -20,6 +117,10 @@
         </div>
         <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/admin">Dashboard</a>
     </div>
+
+    <c:if test="${not empty errorMessage}">
+        <div class="alert alert-danger" role="alert">${errorMessage}</div>
+    </c:if>
 
     <div class="card mb-4">
         <div class="card-body">
@@ -50,11 +151,14 @@
                     <label class="form-label">Tháng</label>
                     <input class="form-control" type="number" min="1" max="12" name="month" value="${month}" placeholder="6">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Ngày</label>
-                    <input class="form-control" type="number" min="1" max="31" name="day" value="${day}" placeholder="19">
+                <div class="col-md-3 d-none" id="reportRangeFilterWrap">
+                    <label class="form-label">Từ ngày</label>
+                    <input class="form-control" type="date" name="reportStartDate" id="reportStartDate" value="${reportStartDate}">
+                    <label class="form-label mt-2">Đến ngày</label>
+                    <input class="form-control" type="date" name="reportEndDate" id="reportEndDate" value="${reportEndDate}">
+                    <div class="form-text">Dùng khi chọn chế độ xem theo ngày. Mặc định là cả tháng hiện tại.</div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2" id="reportSubmitWrap">
                     <button type="submit" class="btn btn-primary w-100">Lọc dữ liệu</button>
                 </div>
             </form>
@@ -66,13 +170,20 @@
             <div class="card h-100">
                 <div class="card-header fw-semibold">Doanh thu (SUM(final_amount), Invoice.status = 'Paid')</div>
                 <div class="card-body">
-                    <canvas id="revenueChart"></canvas>
-                    <div class="table-responsive mt-3">
+                    <div class="report-chart-panel">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div class="table-responsive report-table-scroll mt-3">
                         <table class="table table-sm align-middle">
                             <thead><tr><th>Kỳ</th><th>Doanh thu</th></tr></thead>
                             <tbody>
                             <c:forEach var="r" items="${revenueSeries}">
-                                <tr><td>${r.period}</td><td>${r.value}</td></tr>
+                                <tr>
+                                    <td>${r.period}</td>
+                                    <td>
+                                        <fmt:formatNumber value="${r.value}" type="number" maxFractionDigits="0" groupingUsed="true" /> VNĐ
+                                    </td>
+                                </tr>
                             </c:forEach>
                             </tbody>
                         </table>
@@ -85,8 +196,10 @@
             <div class="card h-100">
                 <div class="card-header fw-semibold">Lượt khám (COUNT(appointment_id), Appointment.status = 'Completed')</div>
                 <div class="card-body">
-                    <canvas id="visitChart"></canvas>
-                    <div class="table-responsive mt-3">
+                    <div class="report-chart-panel">
+                        <canvas id="visitChart"></canvas>
+                    </div>
+                    <div class="table-responsive report-table-scroll mt-3">
                         <table class="table table-sm align-middle">
                             <thead><tr><th>Kỳ</th><th>Lượt khám</th></tr></thead>
                             <tbody>
@@ -196,14 +309,15 @@
 <script>
     let revenueChart = null;
     let visitChart = null;
-    let currentChartData = { labels: [], revenueValues: [], visitValues: [] };
+    let currentChartData = { revenueLabels: [], revenueValues: [], visitLabels: [], visitValues: [] };
     let currentSelectedPeriod = null;
     let currentDetailData = { invoices: [], appointments: [] };
     let invoiceDetailModalInstance = null;
     let selectedChartPeriod = '';
 
-    const revenueSeries = ${revenueJson};
-    const visitSeries = ${visitJson};
+    const revenueSeries = ${empty revenueJson ? '[]' : revenueJson};
+    const visitSeries = ${empty visitJson ? '[]' : visitJson};
+    const granularityInputName = 'granularity';
 
     const revenueLabels = revenueSeries.map(x => x.period);
     const revenueValues = revenueSeries.map(x => Number(x.value || 0));
@@ -211,63 +325,77 @@
     const visitValues = visitSeries.map(x => Number(x.value || 0));
 
     currentChartData = {
-        labels: revenueLabels,
+        revenueLabels: revenueLabels,
         revenueValues: revenueValues,
+        visitLabels: visitLabels,
         visitValues: visitValues
     };
 
-    revenueChart = new Chart(document.getElementById('revenueChart'), {
-        type: 'bar',
-        data: {
-            labels: revenueLabels,
-            datasets: [{
-                label: 'Doanh thu (VNĐ)',
-                data: revenueValues,
-                borderColor: '#198754',
-                backgroundColor: buildChartColors(revenueLabels, '', 'rgba(25,135,84,.95)', 'rgba(25,135,84,.25)')
-            }]
-        },
-        options: {
-            onClick: (event, activeElements) => {
-                if (activeElements && activeElements.length > 0) {
-                    const firstPoint = activeElements[0];
-                    const label = currentChartData.labels[firstPoint.index];
-                    if (label) {
-                        fetchReportDetail(label);
-                    }
-                }
-            }
-        }
-    });
+    const initialPeriod = revenueLabels.length > 0
+        ? revenueLabels[revenueLabels.length - 1]
+        : (visitLabels.length > 0 ? visitLabels[visitLabels.length - 1] : '');
 
-    visitChart = new Chart(document.getElementById('visitChart'), {
-        type: 'bar',
-        data: {
-            labels: visitLabels,
-            datasets: [{
-                label: 'Lượt khám đã hoàn tất',
-                data: visitValues,
-                backgroundColor: buildChartColors(visitLabels, '', 'rgba(13,110,253,.95)', 'rgba(13,110,253,.25)')
-            }]
-        },
-        options: {
-            datasets: {
-                bar: {
-                    categoryPercentage: 0.4,
-                    barPercentage: 0.8
-                }
+    function createChartConfig(labels, values, chartLabel, activeColor, inactiveColor, onPick) {
+        return {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: chartLabel,
+                    data: values,
+                    borderColor: activeColor,
+                    backgroundColor: buildChartColors(labels, selectedChartPeriod, activeColor, inactiveColor)
+                }]
             },
-            onClick: (event, activeElements) => {
-                if (activeElements && activeElements.length > 0) {
-                    const firstPoint = activeElements[0];
-                    const label = currentChartData.labels[firstPoint.index];
-                    if (label) {
-                        fetchReportDetail(label);
+            options: {
+                maintainAspectRatio: false,
+                onClick: (event, activeElements) => {
+                    if (activeElements && activeElements.length > 0) {
+                        const firstPoint = activeElements[0];
+                        const clickedLabel = labels[firstPoint.index];
+                        if (clickedLabel) {
+                            onPick(clickedLabel);
+                        }
                     }
                 }
             }
-        }
-    });
+        };
+    }
+
+    if (revenueLabels.length > 0) {
+        revenueChart = new Chart(
+            document.getElementById('revenueChart'),
+            createChartConfig(
+                revenueLabels,
+                revenueValues,
+                'Doanh thu (VNĐ)',
+                'rgba(25,135,84,.95)',
+                'rgba(25,135,84,.25)',
+                fetchReportDetail
+            )
+        );
+    }
+
+    if (visitLabels.length > 0) {
+        visitChart = new Chart(
+            document.getElementById('visitChart'),
+            createChartConfig(
+                visitLabels,
+                visitValues,
+                'Lượt khám đã hoàn tất',
+                'rgba(13,110,253,.95)',
+                'rgba(13,110,253,.25)',
+                fetchReportDetail
+            )
+        );
+        visitChart.options.datasets = {
+            bar: {
+                categoryPercentage: 0.4,
+                barPercentage: 0.8
+            }
+        };
+        visitChart.update();
+    }
 
     function escapeHtml(text) {
         if (text === null || text === undefined) return '';
@@ -281,14 +409,14 @@
         return String(text).replace(/[&<>"']/g, char => map[char]);
     }
 
-    function formatNumber(num) {
+    function formatCurrency(num) {
         if (num === null || num === undefined) return '0';
         const value = typeof num === 'string' ? parseFloat(num) : num;
         if (Number.isNaN(value)) return '0';
         return value.toLocaleString('vi-VN', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
-        });
+        }) + ' VNĐ';
     }
 
     function parseDetailResponse(data) {
@@ -299,6 +427,48 @@
 
     function buildChartColors(labels, selectedLabel, activeColor, inactiveColor) {
         return labels.map(label => label === selectedLabel ? activeColor : inactiveColor);
+    }
+
+    function getSelectedGranularity() {
+        const checked = document.querySelector('input[name="' + granularityInputName + '"]:checked');
+        return checked ? checked.value : 'month';
+    }
+
+    function syncReportFilterUI() {
+        const dayMode = getSelectedGranularity() === 'day';
+        const reportRangeWrap = document.getElementById('reportRangeFilterWrap');
+        const reportStartDateInput = document.getElementById('reportStartDate');
+        const reportEndDateInput = document.getElementById('reportEndDate');
+        const yearInput = document.querySelector('input[name="year"]');
+        const monthInput = document.querySelector('input[name="month"]');
+        if (reportRangeWrap) {
+            reportRangeWrap.classList.toggle('d-none', !dayMode);
+        }
+        if (yearInput) {
+            yearInput.closest('.col-md-2')?.classList.toggle('d-none', dayMode);
+        }
+        if (monthInput) {
+            monthInput.closest('.col-md-2')?.classList.toggle('d-none', dayMode);
+        }
+        if (dayMode) {
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            const pad = value => String(value).padStart(2, '0');
+
+            if (reportStartDateInput && !reportStartDateInput.value) {
+                reportStartDateInput.value = firstDay.getFullYear() + '-' + pad(firstDay.getMonth() + 1) + '-' + pad(firstDay.getDate());
+            }
+            if (reportEndDateInput && !reportEndDateInput.value) {
+                reportEndDateInput.value = lastDay.getFullYear() + '-' + pad(lastDay.getMonth() + 1) + '-' + pad(lastDay.getDate());
+            }
+        }
+        if (reportStartDateInput) {
+            reportStartDateInput.required = dayMode;
+        }
+        if (reportEndDateInput) {
+            reportEndDateInput.required = dayMode;
+        }
     }
 
     function syncSelectedPeriodUI(period) {
@@ -379,9 +549,9 @@
             html += '<tr>';
             html += '<td>' + escapeHtml(item.invoiceId) + '</td>';
             html += '<td>' + escapeHtml(item.patientName) + '</td>';
-            html += '<td class="text-end">' + formatNumber(item.totalAmount) + ' VNĐ</td>';
-            html += '<td class="text-end">' + formatNumber(item.bhytDeduction) + ' VNĐ</td>';
-            html += '<td class="text-end fw-semibold">' + formatNumber(item.finalAmount) + ' VNĐ</td>';
+            html += '<td class="text-end">' + formatCurrency(item.totalAmount) + '</td>';
+            html += '<td class="text-end">' + formatCurrency(item.bhytDeduction) + '</td>';
+            html += '<td class="text-end fw-semibold">' + formatCurrency(item.finalAmount) + '</td>';
             html += '<td>' + escapeHtml(item.paymentDate) + '</td>';
             html += '<td><button class="btn btn-sm btn-outline-primary" onclick="viewInvoiceDetail(\'' + safeInvoiceId + '\')">Xem chi tiết</button></td>';
             html += '</tr>';
@@ -408,7 +578,7 @@
             html += '<td>' + escapeHtml(item.patientName) + '</td>';
             html += '<td>' + escapeHtml(item.doctorName) + '</td>';
             html += '<td>' + escapeHtml(item.timeSlot) + '</td>';
-            html += '<td><span class="badge bg-success">' + escapeHtml(item.status || 'Completed') + '</span></td>';
+            html += '<td><span class="badge bg-success">' + escapeHtml(item.status || 'Hoàn tất') + '</span></td>';
             html += '<td>' + escapeHtml(item.appointmentDate) + '</td>';
             html += '</tr>';
         });
@@ -432,8 +602,8 @@
             html += '<tr>';
             html += '<td>' + escapeHtml(item.serviceName || ('Dịch vụ #' + item.serviceId)) + '</td>';
             html += '<td class="text-end">' + escapeHtml(item.quantity) + '</td>';
-            html += '<td class="text-end">' + formatNumber(item.unitPrice) + ' VNĐ</td>';
-            html += '<td class="text-end fw-semibold">' + formatNumber(item.lineTotal) + ' VNĐ</td>';
+            html += '<td class="text-end">' + formatCurrency(item.unitPrice) + '</td>';
+            html += '<td class="text-end fw-semibold">' + formatCurrency(item.lineTotal) + '</td>';
             html += '</tr>';
         });
         tbody.innerHTML = html;
@@ -482,14 +652,36 @@
     window.viewInvoiceDetail = viewInvoiceDetail;
 
     document.addEventListener('DOMContentLoaded', function () {
-        let latestLabel = null;
-        if (currentChartData.labels.length > 0) {
-            latestLabel = currentChartData.labels[currentChartData.labels.length - 1];
+        syncReportFilterUI();
+        document.querySelectorAll('input[name="granularity"]').forEach(function (radio) {
+            radio.addEventListener('change', syncReportFilterUI);
+        });
+
+        const reportForm = document.querySelector('form[action="${pageContext.request.contextPath}/admin"]');
+        if (reportForm) {
+            reportForm.addEventListener('submit', function () {
+                if (getSelectedGranularity() !== 'day') {
+                    return;
+                }
+                const reportStartDateInput = document.getElementById('reportStartDate');
+                const reportEndDateInput = document.getElementById('reportEndDate');
+                if (!reportStartDateInput || !reportEndDateInput) {
+                    return;
+                }
+                const startParts = reportStartDateInput.value ? reportStartDateInput.value.split('-') : [];
+                const endParts = reportEndDateInput.value ? reportEndDateInput.value.split('-') : [];
+                if (startParts.length === 3 && endParts.length === 3) {
+                    const yearInput = document.querySelector('input[name="year"]');
+                    const monthInput = document.querySelector('input[name="month"]');
+                    if (yearInput) yearInput.value = startParts[0];
+                    if (monthInput) monthInput.value = startParts[1];
+                }
+            });
         }
 
-        if (latestLabel) {
-            syncSelectedPeriodUI(latestLabel);
-            fetchReportDetail(latestLabel);
+        if (initialPeriod) {
+            syncSelectedPeriodUI(initialPeriod);
+            fetchReportDetail(initialPeriod);
         }
     });
 </script>

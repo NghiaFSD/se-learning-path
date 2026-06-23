@@ -1,0 +1,301 @@
+/* Shared Admin UI layer for S-COMS
+   Keeps typography, spacing and dashboard surfaces consistent across admin JSPs. */
+:root {
+    --admin-bg: #f4f7fb;
+    --admin-surface: #ffffff;
+    --admin-surface-soft: #f8fafc;
+    --admin-text: #172033;
+    --admin-muted: #667085;
+    --admin-border: #e4eaf2;
+    --admin-primary: #0f766e;
+    --admin-primary-strong: #0b5f59;
+    --admin-primary-soft: #e6fffb;
+    --admin-info: #2563eb;
+    --admin-warning: #f59e0b;
+    --admin-danger: #dc3545;
+    --admin-radius: 18px;
+    --admin-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+    --admin-shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.055);
+}
+
+html {
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body.bg-light,
+body {
+    background: var(--admin-bg) !important;
+    color: var(--admin-text);
+    font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.container,
+.container-fluid {
+    max-width: 1480px;
+}
+
+h1, h2, h3, h4, h5, h6,
+.card-title,
+.modal-title,
+.fw-semibold {
+    color: var(--admin-text);
+    letter-spacing: -0.015em;
+}
+
+h2, h3 {
+    font-weight: 750;
+}
+
+.text-secondary,
+.text-muted {
+    color: var(--admin-muted) !important;
+}
+
+.admin-page-shell {
+    min-height: 100vh;
+}
+
+.admin-page-header,
+.container > .d-flex.justify-content-between.align-items-center.mb-3,
+.container > .d-flex.justify-content-between.align-items-center.mb-4 {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow-soft);
+    padding: 1rem 1.15rem;
+    backdrop-filter: blur(14px);
+}
+
+.card,
+.modal-content,
+.alert {
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow-soft);
+}
+
+.card {
+    background: var(--admin-surface);
+}
+
+.card-header {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-bottom: 1px solid var(--admin-border);
+    border-top-left-radius: var(--admin-radius) !important;
+    border-top-right-radius: var(--admin-radius) !important;
+    padding: 0.95rem 1.1rem;
+}
+
+.card-body {
+    padding: 1.1rem;
+}
+
+.kpi-card,
+.daily-widget-card,
+.chart-panel,
+.queue-monitor-card {
+    border: 1px solid var(--admin-border) !important;
+    border-radius: var(--admin-radius) !important;
+    box-shadow: var(--admin-shadow-soft) !important;
+    overflow: hidden;
+}
+
+.kpi-card:hover,
+.daily-widget-clickable:hover,
+.dashboard-clickable-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--admin-shadow) !important;
+}
+
+.kpi-card,
+.daily-widget-clickable,
+.dashboard-clickable-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.kpi-value,
+.card h4,
+.card h3 {
+    color: var(--admin-primary);
+    font-weight: 800;
+}
+
+.btn {
+    border-radius: 999px;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    padding-inline: 1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--admin-primary), #14b8a6);
+    border-color: transparent;
+    box-shadow: 0 8px 16px rgba(20, 184, 166, 0.22);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background: linear-gradient(135deg, var(--admin-primary-strong), #0f9f90);
+    border-color: transparent;
+}
+
+.btn-outline-secondary,
+.btn-outline-primary,
+.btn-outline-warning,
+.btn-outline-danger,
+.btn-outline-success {
+    background: #ffffff;
+}
+
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+}
+
+.form-control,
+.form-select {
+    border-color: #d8e0ea;
+    border-radius: 14px;
+    min-height: 42px;
+    color: var(--admin-text);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.16);
+}
+
+.table-responsive {
+    border-radius: 16px;
+}
+
+.table {
+    color: var(--admin-text);
+    vertical-align: middle;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.85rem 0.95rem;
+    border-bottom-color: var(--admin-border);
+}
+
+.table thead th,
+.table-light th {
+    background: #f1f5f9 !important;
+    color: #344054;
+    font-size: 0.84rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+}
+
+.table-hover > tbody > tr:hover > * {
+    background-color: #f8fbff;
+}
+
+.badge {
+    border-radius: 999px;
+    font-weight: 700;
+    padding: 0.42em 0.72em;
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--admin-border);
+}
+
+.modal-content {
+    overflow: hidden;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+}
+
+.alert {
+    border-width: 1px;
+}
+
+.alert-success {
+    background: #ecfdf3;
+    border-color: #abefc6;
+    color: #067647;
+}
+
+.alert-danger {
+    background: #fff1f3;
+    border-color: #fecdd6;
+    color: #b42318;
+}
+
+.alert-warning {
+    background: #fffaeb;
+    border-color: #fedf89;
+    color: #93370d;
+}
+
+.alert-info {
+    background: #eff8ff;
+    border-color: #b2ddff;
+    color: #175cd3;
+}
+
+canvas {
+    max-width: 100%;
+}
+
+.chart-panel canvas {
+    min-height: 260px;
+}
+
+.quick-modal-table {
+    margin-bottom: 0;
+}
+
+.quick-action-btn,
+.btn-edit-service {
+    white-space: nowrap;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+
+    .admin-page-header,
+    .container > .d-flex.justify-content-between.align-items-center.mb-3,
+    .container > .d-flex.justify-content-between.align-items-center.mb-4 {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+
+    .container > .d-flex.justify-content-between.align-items-center.mb-3 > .d-flex,
+    .container > .d-flex.justify-content-between.align-items-center.mb-4 > .d-flex {
+        flex-wrap: wrap;
+    }
+
+    .table > :not(caption) > * > * {
+        padding: 0.7rem;
+    }
+}

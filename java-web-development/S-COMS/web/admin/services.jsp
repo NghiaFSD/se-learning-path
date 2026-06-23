@@ -8,6 +8,12 @@
     <c:redirect url="/admin?action=manageServices"/>
 </c:if>
 
+<%--
+    Trang Quản trị danh mục dịch vụ y tế:
+    - CRUD dịch vụ khám/xét nghiệm
+    - Quản lý trạng thái Hoạt động/Ngừng hoạt động và đơn giá
+--%>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -99,7 +105,7 @@
                         <td>${s.serviceId}</td>
                         <td>${s.serviceName}</td>
                         <td>${s.serviceType == 'Examination' ? 'Khám bệnh' : (s.serviceType == 'Lab_Test' ? 'Xét nghiệm' : s.serviceType)}</td>
-                        <td><fmt:formatNumber value="${s.price}" pattern="#,##0"/> VND</td>
+                        <td><fmt:formatNumber value="${s.price}" type="number" maxFractionDigits="0" groupingUsed="true" /> VNĐ</td>
                         <td>
                             <span class="badge ${s.status == 'Active' ? 'text-bg-success' : 'text-bg-secondary'}">
                                 ${s.status == 'Active' ? 'Hoạt động' : 'Ngừng hoạt động'}

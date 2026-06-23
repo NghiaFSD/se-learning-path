@@ -1,4 +1,10 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
+
+<%--
+    Trang Health Records (ngoại lệ vận hành):
+    - Hiển thị dữ liệu hồ sơ sức khỏe phục vụ điều phối khẩn
+    - Hỗ trợ thao tác kiểm tra, rà soát trạng thái hồ sơ
+--%>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
