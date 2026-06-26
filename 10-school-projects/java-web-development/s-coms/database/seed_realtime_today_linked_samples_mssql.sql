@@ -399,15 +399,19 @@ BEGIN TRY
     INSERT INTO dbo.Invoice_Detail (
         invoice_id,
         service_id,
-        appointment_id,
         quantity,
+        unit_price,
+        line_total,
+        appointment_id,
         price
     )
     SELECT
         im.invoice_id,
         im.service_id,
-        im.appointment_id,
         1,
+        im.service_price,
+        im.service_price,
+        im.appointment_id,
         im.service_price
     FROM #InvoiceMap im
     WHERE NOT EXISTS (
