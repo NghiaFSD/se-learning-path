@@ -123,7 +123,7 @@ public class UserDAO {
      */
     public User validateLogin(String email, String password, String role) {
         // Step 1: Check Account table
-        String sqlAccount = "SELECT account_id, full_name, email, role, password_hash, status FROM Account WHERE email = ? AND role = ?";
+        String sqlAccount = "SELECT account_id, full_name, email, role, password_hash, status FROM Account WHERE email = ? AND LOWER(role) = LOWER(?)";
         
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sqlAccount)) {

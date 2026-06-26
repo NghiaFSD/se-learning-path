@@ -2,6 +2,8 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 
+<c:set var="currentAction" value="reports" />
+
 <%--
     Trang Báo cáo Admin:
     - Tổng hợp doanh thu và lượt khám theo ngày/tháng/năm
@@ -15,6 +17,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Báo cáo Doanh thu và Lượt khám - S-COMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 
     <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -110,13 +113,15 @@
 </head>
 <body class="bg-light">
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-1">Phân hệ Báo cáo Doanh thu &amp; Hiệu suất Phòng khám S-COMS</h2>
-            <p class="text-secondary mb-0">FR-ADM-06 và FR-ADM-07</p>
+    <div class="admin-layout row g-3">
+        <div class="col-lg-3 admin-sidebar-col">
+            <%@ include file="/admin/fragments/sidebar.jspf" %>
         </div>
-        <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/admin">Dashboard</a>
-    </div>
+        <div class="col-lg-9 admin-content-col">
+            <div class="admin-page-header mb-3">
+                <h2 class="mb-1">Phân hệ Báo cáo Doanh thu &amp; Hiệu suất Phòng khám S-COMS</h2>
+                <p class="text-secondary mb-0">FR-ADM-06 và FR-ADM-07</p>
+            </div>
 
     <c:if test="${not empty errorMessage}">
         <div class="alert alert-danger" role="alert">${errorMessage}</div>
@@ -271,6 +276,8 @@
             </div>
         </div>
     </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="invoiceDetailModal" tabindex="-1" aria-labelledby="invoiceDetailModalLabel" aria-hidden="true">
@@ -417,6 +424,22 @@
             minimumFractionDigits: 0,
             maximumFractionDigits: 2
         }) + ' VNĐ';
+    }
+
+    function getAppointmentStatusMeta(status) {
+        const normalized = String(status || '').trim();
+        switch (normalized) {
+            case 'Completed':
+                return { label: 'Hoàn tất', className: 'badge bg-success' };
+            case 'No_Show':
+                return { label: 'Không đến', className: 'badge bg-secondary' };
+            case 'In_Progress':
+                return { label: 'Đang khám', className: 'badge bg-info text-dark' };
+            case 'Waiting':
+                return { label: 'Chờ đợi', className: 'badge bg-warning text-dark' };
+            default:
+                return { label: normalized || 'Không xác định', className: 'badge bg-secondary' };
+        }
     }
 
     function parseDetailResponse(data) {
@@ -573,12 +596,13 @@
 
         let html = '';
         appointments.forEach(item => {
+            const statusMeta = getAppointmentStatusMeta(item.status);
             html += '<tr>';
             html += '<td>' + escapeHtml(item.appointmentId) + '</td>';
             html += '<td>' + escapeHtml(item.patientName) + '</td>';
             html += '<td>' + escapeHtml(item.doctorName) + '</td>';
             html += '<td>' + escapeHtml(item.timeSlot) + '</td>';
-            html += '<td><span class="badge bg-success">' + escapeHtml(item.status || 'Hoàn tất') + '</span></td>';
+            html += '<td><span class="' + statusMeta.className + '">' + escapeHtml(statusMeta.label) + '</span></td>';
             html += '<td>' + escapeHtml(item.appointmentDate) + '</td>';
             html += '</tr>';
         });

@@ -2,6 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <fmt:setLocale value="vi_VN" />
+<c:set var="currentAction" value="${empty param.action ? 'dashboard' : param.action}" />
 <%
     if (request.getAttribute("totalAccounts") == null) {
         response.sendRedirect(request.getContextPath() + "/admin");
@@ -84,14 +85,14 @@
                 border: 0;
                 border-radius: 12px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-                opacity: 0;
-                transform: translateY(18px);
-                transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.25s ease;
+                opacity: 1;
+                transform: none;
+                transition: box-shadow 0.25s ease;
             }
 
             .kpi-card.is-visible {
                 opacity: 1;
-                transform: translateY(0);
+                transform: none;
             }
 
             .kpi-card:hover {
@@ -341,6 +342,7 @@
             .queue-table-scroll tbody tr {
                 height: 52px;
             }
+
         </style>
     </head>
     <body class="bg-light">
@@ -350,9 +352,14 @@
                     <h3 class="mb-1">Hệ thống Điều hành & Quản trị Danh mục S-COMS</h3>
                     <p class="text-secondary mb-0">Bảng điều hành quản trị theo chuẩn FR-ADM và BR-08</p>
                 </div>
-                <a href="${pageContext.request.contextPath}/logout" class="btn btn-outline-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a>
             </div>
 
+            <div class="admin-layout row g-3">
+                <div class="col-lg-3 admin-sidebar-col">
+                    <%@ include file="/admin/fragments/sidebar.jspf" %>
+                </div>
+
+                <div class="col-lg-9 admin-content-col">
             <c:if test="${not empty sessionScope.successMessage}">
                 <div class="alert alert-success">${sessionScope.successMessage}</div>
                 <% session.removeAttribute("successMessage"); %>
@@ -427,11 +434,11 @@
                                         <c:forEach var="row" items="${todayQueueStatus}">
                                             <tr class="queue-row"
                                                 data-doctor-name="${row.doctorName}"
-                                                data-department="${row.department == 'Endocrinology' ? 'Nội tiết - Tiểu đường' : row.department}"
+                                                data-department="${row.department == 'Endocrinology' ? 'Nội tiết - Tiểu đường' : (row.department == 'Cardiology' ? 'Tim mạch' : (row.department == 'Nephrology' ? 'Thận học' : (row.department == 'General' ? 'Tổng quát' : row.department)))}"
                                                 data-waiting-count="${row.waitingCount}"
                                                 onclick="openDoctorQueueModal('${row.doctorId}', this.dataset.doctorName, this.dataset.department)">
                                                 <td>${row.doctorName}</td>
-                                                <td>${row.department == 'Endocrinology' ? 'Nội tiết - Tiểu đường' : row.department}</td>
+                                                <td>${row.department == 'Endocrinology' ? 'Nội tiết - Tiểu đường' : (row.department == 'Cardiology' ? 'Tim mạch' : (row.department == 'Nephrology' ? 'Thận học' : (row.department == 'General' ? 'Tổng quát' : row.department)))}</td>
                                                 <td class="text-end">
                                                     <span class="badge queue-load-badge" data-waiting-count="${row.waitingCount}">${row.waitingCount}</span>
                                                 </td>
@@ -478,13 +485,9 @@
                 </div>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 mt-4">
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=listUsers">Quản lý Tài khoản & Phân quyền</a>
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=manageServices">Quản lý Danh mục Y tế</a>
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=schedule">Quản lý Lịch trực Bác sĩ</a>
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=reports">Báo cáo Doanh thu/Lượt khám</a>
-                <a class="btn btn-warning" href="${pageContext.request.contextPath}/admin?action=exception">Điều phối khẩn cấp & Xử lý sự cố</a>
+                </div>
             </div>
+
         </div>
 
         <div class="modal fade" id="dashboardQuickModal" tabindex="-1" aria-labelledby="dashboardQuickModalLabel" aria-hidden="true">
@@ -639,7 +642,7 @@
                                         <th>Bác sĩ trực</th>
                                         <th>Chuyên khoa</th>
                                         <th>Khung giờ</th>
-                                        <th class="text-end">Tải hiện có / tối đa</th>
+                                        <th class="text-end">Đã đặt / tối đa</th>
                                         <th>Trạng thái ca</th>
                                     </tr>
                                 </thead>
@@ -658,12 +661,16 @@
                                                     <td>
                                                         <c:choose>
                                                             <c:when test="${shift.department eq 'Endocrinology'}">Nội tiết - Tiểu đường</c:when>
+                                                            <c:when test="${shift.department eq 'Cardiology'}">Tim mạch</c:when>
+                                                            <c:when test="${shift.department eq 'Nephrology'}">Thận học</c:when>
+                                                            <c:when test="${shift.department eq 'General'}">Tổng quát</c:when>
                                                             <c:otherwise>${shift.department}</c:otherwise>
                                                         </c:choose>
                                                     </td>
                                                     <td>${shift.timeSlot}</td>
                                                     <td class="text-end">
                                                         <c:set var="currentLoad" value="${empty shift.currentLoad ? 0 : shift.currentLoad}" />
+                                                        <c:set var="activeLoad" value="${empty shift.activeCount ? 0 : shift.activeCount}" />
                                                         <c:set var="maxPatients" value="${empty shift.maxPatients ? 0 : shift.maxPatients}" />
                                                         <c:choose>
                                                             <c:when test="${maxPatients le 0}">
@@ -679,6 +686,7 @@
                                                                 <span class="badge bg-success">${currentLoad} / ${maxPatients}</span>
                                                             </c:otherwise>
                                                         </c:choose>
+                                                        <small class="d-block text-muted mt-1">Đang chờ/khám: ${activeLoad}</small>
                                                     </td>
                                                     <td>
                                                         <c:choose>
@@ -737,6 +745,14 @@
                                                                 card.classList.add('is-visible');
                                                             }, index * 90);
                                                         });
+                                                    }
+
+                                                    // Call revealKpiCards immediately if DOM is ready, or on DOMContentLoaded
+                                                    if (document.readyState === 'loading') {
+                                                        document.addEventListener('DOMContentLoaded', revealKpiCards);
+                                                    } else {
+                                                        // DOM is already ready, call immediately with a small delay to ensure rendering
+                                                        window.setTimeout(revealKpiCards, 100);
                                                     }
 
                                                     function formatCurrency(value) {
@@ -857,6 +873,11 @@
                                                                 return {
                                                                     label: 'Hoàn tất',
                                                                     className: 'badge bg-success text-white status-badge-soft'
+                                                                };
+                                                            case 'No_Show':
+                                                                return {
+                                                                    label: 'Không đến',
+                                                                    className: 'badge bg-secondary text-white status-badge-soft'
                                                                 };
                                                             default:
                                                                 return {
@@ -1364,32 +1385,12 @@
                                                         canvas.style.display = 'block';
                                                     }
                                                     function renderTodayCharts() {
-                                                        const clinicTimeSlots = [];
+                                                        const flowRows = Array.isArray(todayPatientFlowData)
+                                                                ? todayPatientFlowData.filter(item => String(item.timeSlot || '').trim() !== '')
+                                                                : [];
 
-                                                        for (let hour = 7; hour < 23; hour++) {
-                                                            const start = String(hour).padStart(2, '0') + ':00';
-                                                            const end = String(hour + 1).padStart(2, '0') + ':00';
-                                                            clinicTimeSlots.push(start + '-' + end);
-                                                        }
-
-                                                        const flowMap = {};
-
-                                                        clinicTimeSlots.forEach(slot => {
-                                                            flowMap[slot] = 0;
-                                                        });
-
-                                                        if (Array.isArray(todayPatientFlowData)) {
-                                                            todayPatientFlowData.forEach(item => {
-                                                                const slot = String(item.timeSlot || '').trim();
-
-                                                                if (Object.prototype.hasOwnProperty.call(flowMap, slot)) {
-                                                                    flowMap[slot] = Number(item.visitCount || 0);
-                                                                }
-                                                            });
-                                                        }
-
-                                                        const flowLabels = clinicTimeSlots;
-                                                        const flowValues = clinicTimeSlots.map(slot => flowMap[slot]);
+                                                        const flowLabels = flowRows.map(item => String(item.timeSlot || '').trim());
+                                                        const flowValues = flowRows.map(item => Number(item.visitCount || 0));
 
                                                         const revenueMap = {
                                                             Examination: 0,
@@ -1411,7 +1412,8 @@
                                                         const statusMap = {
                                                             Waiting: 0,
                                                             In_Progress: 0,
-                                                            Completed: 0
+                                                            Completed: 0,
+                                                            No_Show: 0
                                                         };
 
                                                         if (Array.isArray(todayStatusDistributionData)) {
@@ -1427,7 +1429,8 @@
                                                         const statusValues = [
                                                             statusMap.Waiting,
                                                             statusMap.In_Progress,
-                                                            statusMap.Completed
+                                                            statusMap.Completed,
+                                                            statusMap.No_Show
                                                         ];
 
                                                         const flowCanvas = document.getElementById('todayHourlyFlowChart');
@@ -1535,10 +1538,10 @@
                                                             new Chart(statusCanvas, {
                                                                 type: 'doughnut',
                                                                 data: {
-                                                                    labels: ['Đang chờ', 'Đang khám', 'Đã hoàn tất'],
+                                                                    labels: ['Đang chờ', 'Đang khám', 'Đã hoàn tất', 'Không đến'],
                                                                     datasets: [{
                                                                             data: statusValues,
-                                                                            backgroundColor: ['#f4a261', '#4cc9f0', '#2a9d8f']
+                                                                            backgroundColor: ['#f4a261', '#4cc9f0', '#2a9d8f', '#6c757d']
                                                                         }]
                                                                 },
                                                                 options: {

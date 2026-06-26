@@ -114,6 +114,8 @@ public class AdminDAO {
 
     // Lấy số bệnh nhân đang chờ theo từng bác sĩ trong ngày hôm nay.
     public List<Map<String, Object>> getTodayClinicQueueStatus() {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT d.doctor_id, d.full_name AS doctor_name, d.department, "
                 + "COUNT(a.appointment_id) AS waiting_count "
@@ -143,6 +145,8 @@ public class AdminDAO {
 
     // Lấy chi tiết hàng đợi hôm nay của một bác sĩ cụ thể.
     public List<Map<String, Object>> getDoctorQueueDetailToday(int doctorId) {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT a.appointment_id, p.full_name, "
                 + "FORMAT(a.appointment_time, 'HH:mm') AS appointment_time, a.status "
@@ -222,6 +226,25 @@ public class AdminDAO {
         }
     }
 
+    // Tự động chuyển các lịch hẹn Waiting đã quá giờ hẹn 30 phút sang No_Show.
+    public int markLateWaitingAppointmentsAsNoShow() {
+        String sql = "UPDATE Appointment "
+                + "SET status = 'No_Show' "
+                + "WHERE LOWER(status) = 'waiting' "
+                + "AND DATEADD(MINUTE, 30, appointment_time) < GETDATE()";
+
+        try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            int updated = statement.executeUpdate();
+            if (updated > 0) {
+                LOGGER.log(Level.INFO, "Auto-marked late waiting appointments as No_Show: {0}", updated);
+            }
+            return updated;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to mark late waiting appointments as No_Show", e);
+            return 0;
+        }
+    }
+
     // Job demo tự động chuyển trạng thái lịch hẹn theo thời gian.
     public int autoTransitionAppointmentStatuses() {
         int totalUpdated = 0;
@@ -283,15 +306,19 @@ public class AdminDAO {
 
     // Đếm số bệnh nhân đang chờ khám trong ngày hôm nay.
     public int getTodayWaitingPatients() {
+        markLateWaitingAppointmentsAsNoShow();
         return executeCount("SELECT COUNT(*) FROM Appointment WHERE LOWER(status) = 'waiting' AND CAST(appointment_time AS DATE) = CAST(GETDATE() AS DATE)");
     }
 
     // Lấy danh sách các lượt khám đã hoàn tất trong ngày hôm nay.
     public List<Map<String, Object>> getTodayAppointments() {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT a.appointment_id, "
                 + "COALESCE(p.full_name, acc.full_name, N'Chưa xác định') AS patient_name, "
                 + "COALESCE(d.full_name, N'Chưa phân công') AS doctor_name, "
+                + "FORMAT(a.appointment_time, 'dd/MM/yyyy') AS appointment_date, "
                 + "FORMAT(a.appointment_time, 'HH:mm') AS appointment_time, "
                 + "a.status "
                 + "FROM Appointment a "
@@ -309,6 +336,7 @@ public class AdminDAO {
                 row.put("appointmentId", rs.getInt("appointment_id"));
                 row.put("patientName", rs.getString("patient_name"));
                 row.put("doctorName", rs.getString("doctor_name"));
+                row.put("appointmentDate", rs.getString("appointment_date"));
                 row.put("appointmentTime", rs.getString("appointment_time"));
                 row.put("status", rs.getString("status"));
                 rows.add(row);
@@ -322,6 +350,8 @@ public class AdminDAO {
 
     // Lấy chi tiết danh sách bệnh nhân đang chờ để hiển thị ở modal dashboard.
     public List<Map<String, Object>> getTodayWaitingDetails() {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT a.appointment_id, "
                 + "COALESCE(p.full_name, acc.full_name, N'Chưa xác định') AS patient_name, "
@@ -362,23 +392,30 @@ public class AdminDAO {
     public List<Map<String, Object>> getTodayPatientFlowByTimeSlot() {
         List<Map<String, Object>> rows = new ArrayList<>();
 
-        String sql = "WITH Hours AS ( "
-                + "    SELECT 7 AS hour_value "
-                + "    UNION ALL "
-                + "    SELECT hour_value + 1 FROM Hours WHERE hour_value < 22 "
-                + ") "
-                + "SELECT "
-                + "    RIGHT('0' + CAST(h.hour_value AS VARCHAR(2)), 2) + ':00-' "
-                + "    + RIGHT('0' + CAST(h.hour_value + 1 AS VARCHAR(2)), 2) + ':00' AS time_slot, "
-                + "    COUNT(a.appointment_id) AS visit_count "
-                + "FROM Hours h "
-                + "LEFT JOIN Appointment a "
-                + "    ON DATEPART(HOUR, a.appointment_time) = h.hour_value "
-                + "    AND CAST(a.appointment_time AS DATE) = CAST(GETDATE() AS DATE) "
-                + "    AND LOWER(a.status) IN ('in_progress', 'in-progress', 'completed') "
-                + "GROUP BY h.hour_value "
-                + "ORDER BY h.hour_value "
-                + "OPTION (MAXRECURSION 20)";
+        String sql = "WITH slot_template AS ("
+            + "    SELECT CAST('07:00' AS time) AS slot_start, CAST('09:00' AS time) AS slot_end, '07:00-09:00' AS time_slot "
+            + "    UNION ALL SELECT CAST('09:00' AS time), CAST('11:00' AS time), '09:00-11:00' "
+            + "    UNION ALL SELECT CAST('11:00' AS time), CAST('13:00' AS time), '11:00-13:00' "
+            + "    UNION ALL SELECT CAST('13:00' AS time), CAST('15:00' AS time), '13:00-15:00' "
+            + "    UNION ALL SELECT CAST('15:00' AS time), CAST('17:00' AS time), '15:00-17:00' "
+            + "    UNION ALL SELECT CAST('17:00' AS time), CAST('19:00' AS time), '17:00-19:00' "
+            + "    UNION ALL SELECT CAST('19:00' AS time), CAST('21:00' AS time), '19:00-21:00' "
+            + "    UNION ALL SELECT CAST('21:00' AS time), CAST('23:00' AS time), '21:00-23:00' "
+            + ") "
+            + "SELECT st.time_slot, COUNT(a.appointment_id) AS visit_count "
+            + "FROM slot_template st "
+            + "LEFT JOIN Doctor_Schedule ds "
+            + "       ON ds.work_date = CAST(GETDATE() AS DATE) "
+            + "      AND LOWER(ISNULL(ds.status, '')) <> 'cancelled' "
+            + "      AND TRY_CAST(LEFT(REPLACE(ds.time_slot, ' ', ''), 5) AS time) >= st.slot_start "
+            + "      AND TRY_CAST(LEFT(REPLACE(ds.time_slot, ' ', ''), 5) AS time) < st.slot_end "
+            + "LEFT JOIN Appointment a "
+            + "       ON a.schedule_id = ds.schedule_id "
+            + "      AND LOWER(a.status) IN ('in_progress', 'in-progress', 'completed') "
+            + "      AND CAST(a.appointment_time AS DATE) = CAST(GETDATE() AS DATE) "
+            + "      AND a.appointment_time <= GETDATE() "
+            + "GROUP BY st.slot_start, st.time_slot "
+            + "ORDER BY st.slot_start";
 
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql); ResultSet rs = statement.executeQuery()) {
 
@@ -429,11 +466,13 @@ public class AdminDAO {
 
     // Thống kê phân bố trạng thái ca khám hôm nay.
     public List<Map<String, Object>> getTodayAppointmentStatusDistribution() {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT ap.status, COUNT(ap.appointment_id) AS total_count "
                 + "FROM Appointment ap "
                 + "WHERE CAST(ap.appointment_time AS DATE) = CAST(GETDATE() AS DATE) "
-                + "AND LOWER(ap.status) IN ('waiting', 'in_progress', 'completed') "
+            + "AND LOWER(ap.status) IN ('waiting', 'in_progress', 'completed', 'no_show') "
                 + "AND (LOWER(ap.status) <> 'completed' OR ap.appointment_time <= GETDATE()) "
                 + "GROUP BY ap.status";
 
@@ -599,6 +638,10 @@ public class AdminDAO {
             return false;
         }
 
+        if (isAccountEmailExists(email)) {
+            return false;
+        }
+
         String sql = "INSERT INTO Account (full_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, fullName);
@@ -609,6 +652,24 @@ public class AdminDAO {
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to create account", e);
+            return false;
+        }
+    }
+
+    // Kiểm tra email tài khoản đã tồn tại hay chưa (không phân biệt hoa thường).
+    public boolean isAccountEmailExists(String email) {
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+
+        String sql = "SELECT COUNT(*) FROM Account WHERE LOWER(email) = LOWER(?)";
+        try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email.trim());
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to check duplicate account email", e);
             return false;
         }
     }
@@ -645,6 +706,226 @@ public class AdminDAO {
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to update account status", e);
+            return false;
+        }
+    }
+
+    // Xóa tài khoản (không áp dụng cho bác sĩ); rollback nếu có ràng buộc dữ liệu.
+    public boolean deleteAccountForAdmin(int accountId) {
+        if (accountId <= 0) {
+            return false;
+        }
+
+        String sqlGetRole = "SELECT role FROM Account WHERE account_id = ?";
+        String sqlDeletePatient = "DELETE FROM Patient WHERE account_id = ? OR patient_id = ?";
+        String sqlDeleteAccount = "DELETE FROM Account WHERE account_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String role;
+                try (PreparedStatement roleStmt = connection.prepareStatement(sqlGetRole)) {
+                    roleStmt.setInt(1, accountId);
+                    try (ResultSet rs = roleStmt.executeQuery()) {
+                        if (!rs.next()) {
+                            connection.rollback();
+                            return false;
+                        }
+                        role = normalizeRole(rs.getString("role"));
+                    }
+                }
+
+                if ("doctor".equals(role)) {
+                    connection.rollback();
+                    return false;
+                }
+
+                if ("patient".equals(role)) {
+                    try (PreparedStatement patientStmt = connection.prepareStatement(sqlDeletePatient)) {
+                        patientStmt.setInt(1, accountId);
+                        patientStmt.setInt(2, accountId);
+                        patientStmt.executeUpdate();
+                    }
+                }
+
+                try (PreparedStatement accountStmt = connection.prepareStatement(sqlDeleteAccount)) {
+                    accountStmt.setInt(1, accountId);
+                    if (accountStmt.executeUpdate() <= 0) {
+                        connection.rollback();
+                        return false;
+                    }
+                }
+
+                connection.commit();
+                return true;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to delete account", e);
+            return false;
+        }
+    }
+
+    // Lấy hồ sơ chi tiết tài khoản để admin chỉnh sửa theo vai trò.
+    public Map<String, Object> getAccountProfileForAdminEdit(int accountId) {
+        Map<String, Object> profile = new HashMap<>();
+        String sqlAccount = "SELECT account_id, full_name, email, role FROM Account WHERE account_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement accountStmt = connection.prepareStatement(sqlAccount)) {
+            accountStmt.setInt(1, accountId);
+            try (ResultSet accountRs = accountStmt.executeQuery()) {
+                if (!accountRs.next()) {
+                    return profile;
+                }
+
+                String role = toTitleCase(accountRs.getString("role"));
+                profile.put("accountId", accountRs.getInt("account_id"));
+                profile.put("fullName", accountRs.getString("full_name"));
+                profile.put("email", accountRs.getString("email"));
+                profile.put("role", role);
+                profile.put("phone", "");
+                profile.put("address", "");
+                profile.put("department", "");
+
+                if ("Patient".equals(role)) {
+                    String sqlPatient = "SELECT TOP 1 phone, address FROM Patient WHERE account_id = ? OR patient_id = ?";
+                    try (PreparedStatement patientStmt = connection.prepareStatement(sqlPatient)) {
+                        patientStmt.setInt(1, accountId);
+                        patientStmt.setInt(2, accountId);
+                        try (ResultSet patientRs = patientStmt.executeQuery()) {
+                            if (patientRs.next()) {
+                                profile.put("phone", patientRs.getString("phone"));
+                                profile.put("address", patientRs.getString("address"));
+                            }
+                        }
+                    }
+                } else if ("Doctor".equals(role)) {
+                    String sqlDoctor = "SELECT TOP 1 phone, department FROM Doctor WHERE account_id = ? OR doctor_id = ?";
+                    try (PreparedStatement doctorStmt = connection.prepareStatement(sqlDoctor)) {
+                        doctorStmt.setInt(1, accountId);
+                        doctorStmt.setInt(2, accountId);
+                        try (ResultSet doctorRs = doctorStmt.executeQuery()) {
+                            if (doctorRs.next()) {
+                                profile.put("phone", doctorRs.getString("phone"));
+                                profile.put("department", normalizeDepartmentForAi(doctorRs.getString("department")));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load account profile for admin edit", e);
+            profile.clear();
+        }
+
+        return profile;
+    }
+
+    // Cập nhật hồ sơ tài khoản theo vai trò: Account + Patient/Doctor nếu có.
+    public boolean updateAccountProfileByRole(int accountId,
+            String fullName,
+            String email,
+            String phone,
+            String address,
+            String department) {
+        if (accountId <= 0 || fullName == null || fullName.isBlank() || email == null || email.isBlank()) {
+            return false;
+        }
+
+        String sqlGetRole = "SELECT role FROM Account WHERE account_id = ?";
+        String sqlUpdateAccount = "UPDATE Account SET full_name = ?, email = ? WHERE account_id = ?";
+        String sqlUpdatePatientByAccount = "UPDATE Patient SET full_name = ?, email = ?, phone = ?, address = ? WHERE account_id = ?";
+        String sqlUpdatePatientById = "UPDATE Patient SET full_name = ?, email = ?, phone = ?, address = ? WHERE patient_id = ?";
+        String sqlUpdateDoctorByAccount = "UPDATE Doctor SET full_name = ?, email = ?, phone = ?, department = ? WHERE account_id = ?";
+        String sqlUpdateDoctorById = "UPDATE Doctor SET full_name = ?, email = ?, phone = ?, department = ? WHERE doctor_id = ?";
+
+        String cleanName = fullName.trim();
+        String cleanEmail = email.trim();
+        String cleanPhone = phone == null ? "" : phone.trim();
+        String cleanAddress = address == null ? "" : address.trim();
+        String normalizedDepartment = normalizeDepartmentForAi(department);
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String role;
+                try (PreparedStatement roleStmt = connection.prepareStatement(sqlGetRole)) {
+                    roleStmt.setInt(1, accountId);
+                    try (ResultSet rs = roleStmt.executeQuery()) {
+                        if (!rs.next()) {
+                            connection.rollback();
+                            return false;
+                        }
+                        role = toTitleCase(rs.getString("role"));
+                    }
+                }
+
+                try (PreparedStatement accountStmt = connection.prepareStatement(sqlUpdateAccount)) {
+                    accountStmt.setString(1, cleanName);
+                    accountStmt.setString(2, cleanEmail);
+                    accountStmt.setInt(3, accountId);
+                    if (accountStmt.executeUpdate() <= 0) {
+                        connection.rollback();
+                        return false;
+                    }
+                }
+
+                if ("Patient".equals(role)) {
+                    int updated;
+                    try (PreparedStatement patientStmt = connection.prepareStatement(sqlUpdatePatientByAccount)) {
+                        patientStmt.setString(1, cleanName);
+                        patientStmt.setString(2, cleanEmail);
+                        patientStmt.setString(3, cleanPhone);
+                        patientStmt.setString(4, cleanAddress);
+                        patientStmt.setInt(5, accountId);
+                        updated = patientStmt.executeUpdate();
+                    }
+                    if (updated <= 0) {
+                        try (PreparedStatement patientStmt = connection.prepareStatement(sqlUpdatePatientById)) {
+                            patientStmt.setString(1, cleanName);
+                            patientStmt.setString(2, cleanEmail);
+                            patientStmt.setString(3, cleanPhone);
+                            patientStmt.setString(4, cleanAddress);
+                            patientStmt.setInt(5, accountId);
+                            patientStmt.executeUpdate();
+                        }
+                    }
+                } else if ("Doctor".equals(role)) {
+                    int updated;
+                    try (PreparedStatement doctorStmt = connection.prepareStatement(sqlUpdateDoctorByAccount)) {
+                        doctorStmt.setString(1, cleanName);
+                        doctorStmt.setString(2, cleanEmail);
+                        doctorStmt.setString(3, cleanPhone);
+                        doctorStmt.setString(4, normalizedDepartment);
+                        doctorStmt.setInt(5, accountId);
+                        updated = doctorStmt.executeUpdate();
+                    }
+                    if (updated <= 0) {
+                        try (PreparedStatement doctorStmt = connection.prepareStatement(sqlUpdateDoctorById)) {
+                            doctorStmt.setString(1, cleanName);
+                            doctorStmt.setString(2, cleanEmail);
+                            doctorStmt.setString(3, cleanPhone);
+                            doctorStmt.setString(4, normalizedDepartment);
+                            doctorStmt.setInt(5, accountId);
+                            doctorStmt.executeUpdate();
+                        }
+                    }
+                }
+
+                connection.commit();
+                return true;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to update account profile by role", e);
             return false;
         }
     }
@@ -906,6 +1187,108 @@ public class AdminDAO {
         return doctors;
     }
 
+    // Lấy chi tiết một ca trực theo scheduleId để phục vụ chuyển giao hoặc chỉnh sửa.
+    public Map<String, Object> getDoctorScheduleById(int scheduleId) {
+        String sql = "SELECT ds.schedule_id, ds.doctor_id, d.full_name, d.department, ds.work_date, ds.time_slot, ds.max_patients, ds.status "
+                + "FROM Doctor_Schedule ds "
+                + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
+                + "WHERE ds.schedule_id = ?";
+        try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, scheduleId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                Map<String, Object> row = new HashMap<>();
+                row.put("scheduleId", rs.getInt("schedule_id"));
+                row.put("doctorId", rs.getInt("doctor_id"));
+                row.put("doctorName", rs.getString("full_name"));
+                row.put("department", rs.getString("department"));
+                row.put("workDate", rs.getDate("work_date"));
+                row.put("timeSlot", rs.getString("time_slot"));
+                row.put("maxPatients", rs.getInt("max_patients"));
+                row.put("status", rs.getString("status"));
+                return row;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load doctor schedule by id", e);
+            return null;
+        }
+    }
+
+    // Chuyển giao một ca trực sang bác sĩ khác sau khi kiểm tra xung đột.
+    public boolean transferDoctorSchedule(int scheduleId, int targetDoctorId) {
+        clearScheduleValidationMessage();
+        if (scheduleId <= 0 || targetDoctorId <= 0) {
+            setScheduleValidationMessage("Thiếu thông tin ca trực hoặc bác sĩ nhận ca.");
+            return false;
+        }
+
+        String scheduleSql = "SELECT ds.doctor_id, ds.work_date, ds.time_slot, ds.max_patients, ds.status, d.department "
+                + "FROM Doctor_Schedule ds "
+                + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
+                + "WHERE ds.schedule_id = ?";
+        String targetSql = "SELECT d.doctor_id, d.department "
+                + "FROM Doctor d "
+                + "JOIN Account a ON a.account_id = d.account_id "
+                + "WHERE d.doctor_id = ? AND LOWER(a.status) = 'active'";
+        String updateSql = "UPDATE Doctor_Schedule SET doctor_id = ? WHERE schedule_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            Integer sourceDoctorId = null;
+            Date workDate = null;
+            String timeSlot = null;
+            int maxPatients = 0;
+
+            try (PreparedStatement statement = connection.prepareStatement(scheduleSql)) {
+                statement.setInt(1, scheduleId);
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (!rs.next()) {
+                        setScheduleValidationMessage("Không tìm thấy ca trực cần chuyển giao.");
+                        return false;
+                    }
+                    sourceDoctorId = rs.getInt("doctor_id");
+                    workDate = rs.getDate("work_date");
+                    timeSlot = rs.getString("time_slot");
+                    maxPatients = rs.getInt("max_patients");
+                }
+            }
+
+            if (sourceDoctorId != null && sourceDoctorId == targetDoctorId) {
+                setScheduleValidationMessage("Bác sĩ hiện tại đã là người phụ trách ca này.");
+                return false;
+            }
+
+            String targetDepartment = null;
+            try (PreparedStatement statement = connection.prepareStatement(targetSql)) {
+                statement.setInt(1, targetDoctorId);
+                try (ResultSet rs = statement.executeQuery()) {
+                    if (!rs.next()) {
+                        setScheduleValidationMessage("Bác sĩ nhận ca không khả dụng hoặc không tồn tại.");
+                        return false;
+                    }
+                    targetDepartment = rs.getString("department");
+                }
+            }
+
+            String validationError = validateScheduleConstraints(connection, targetDoctorId, workDate, timeSlot, maxPatients, scheduleId);
+            if (validationError != null) {
+                setScheduleValidationMessage(validationError);
+                return false;
+            }
+
+            try (PreparedStatement statement = connection.prepareStatement(updateSql)) {
+                statement.setInt(1, targetDoctorId);
+                statement.setInt(2, scheduleId);
+                return statement.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to transfer doctor schedule", e);
+            setScheduleValidationMessage("Không thể chuyển giao ca trực do lỗi hệ thống.");
+            return false;
+        }
+    }
+
     // Lấy danh sách bệnh nhân thuộc một ca trực cụ thể.
     public List<Map<String, Object>> getAppointmentsBySchedule(int scheduleId) {
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -1012,24 +1395,36 @@ public class AdminDAO {
         if (lower.contains("nội tiết") || lower.contains("tiểu đường") || lower.contains("endocrin")) {
             return "Endocrinology";
         }
-        return trimmed;
+        if (lower.contains("tim mạch") || lower.contains("cardio")) {
+            return "Cardiology";
+        }
+        if (lower.contains("thận") || lower.contains("tiết niệu") || lower.contains("nephro")) {
+            return "Nephrology";
+        }
+        if (lower.contains("tổng quát") || lower.contains("general") || lower.contains("mắt") || lower.contains("thần kinh")) {
+            return "General";
+        }
+        return "General";
     }
 
     // Lấy danh sách ca trực hôm nay cho modal dashboard.
     public List<Map<String, Object>> getTodaySchedules() {
         List<Map<String, Object>> rows = new ArrayList<>();
 
+        markLateWaitingAppointmentsAsNoShow();
         refreshDoctorScheduleStatusFromAppointments();
 
         String sql = "SELECT ds.schedule_id, d.full_name, d.department, ds.time_slot, ds.max_patients, ds.status, "
-            + "COALESCE(load_stats.current_load, 0) AS current_load "
+            + "COALESCE(load_stats.booked_count, 0) AS booked_count, "
+            + "COALESCE(load_stats.active_count, 0) AS active_count "
                 + "FROM Doctor_Schedule ds "
                 + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
             + "LEFT JOIN ("
-            + "   SELECT a.schedule_id, COUNT(*) AS current_load "
+            + "   SELECT a.schedule_id, "
+            + "      SUM(CASE WHEN LOWER(a.status) IN ('waiting', 'in_progress', 'in-progress') THEN 1 ELSE 0 END) AS active_count, "
+            + "      SUM(CASE WHEN LOWER(a.status) IN ('waiting', 'in_progress', 'in-progress', 'completed', 'no_show') THEN 1 ELSE 0 END) AS booked_count "
             + "   FROM Appointment a "
             + "   WHERE a.schedule_id IS NOT NULL "
-            + "   AND LOWER(a.status) IN ('waiting', 'in_progress', 'in-progress') "
             + "   GROUP BY a.schedule_id "
             + ") load_stats ON load_stats.schedule_id = ds.schedule_id "
                 + "WHERE ds.work_date = CAST(GETDATE() AS DATE) "
@@ -1043,7 +1438,9 @@ public class AdminDAO {
                 row.put("department", rs.getString("department"));
                 row.put("timeSlot", rs.getString("time_slot"));
                 row.put("maxPatients", rs.getInt("max_patients"));
-                row.put("currentLoad", rs.getInt("current_load"));
+                row.put("currentLoad", rs.getInt("booked_count"));
+                row.put("bookedCount", rs.getInt("booked_count"));
+                row.put("activeCount", rs.getInt("active_count"));
                 row.put("status", rs.getString("status"));
                 rows.add(row);
             }
@@ -1076,12 +1473,19 @@ public class AdminDAO {
     public List<Map<String, Object>> getDoctorSchedules(String department, String doctorName, Date workDate) {
         List<Map<String, Object>> rows = new ArrayList<>();
 
+        markLateWaitingAppointmentsAsNoShow();
         refreshDoctorScheduleStatusFromAppointments();
 
         StringBuilder sql = new StringBuilder(
-                "SELECT ds.schedule_id, ds.doctor_id, d.full_name AS doctor_name, d.department, "
-                + "ds.work_date, ds.time_slot, ds.max_patients, ds.status, "
-                + "COALESCE(active_bookings.active_count, 0) AS active_count "
+                "SELECT ds.schedule_id, ds.doctor_id, "
+                + "COALESCE(d.full_name, 'Không xác định') AS doctor_name, "
+                + "COALESCE(d.department, 'General') AS department, "
+                + "ds.work_date, "
+                + "COALESCE(ds.time_slot, '00:00-00:00') AS time_slot, "
+                + "ISNULL(ds.max_patients, 1) AS max_patients, "
+                + "ds.status, "
+            + "COALESCE(active_bookings.active_count, 0) AS active_count, "
+            + "COALESCE(booked_bookings.booked_count, 0) AS booked_count "
                 + "FROM Doctor_Schedule ds "
                 + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
                 + "LEFT JOIN ("
@@ -1090,6 +1494,12 @@ public class AdminDAO {
                 + "   WHERE LOWER(status) IN ('waiting', 'in_progress', 'in-progress') "
                 + "   GROUP BY schedule_id"
                 + ") active_bookings ON active_bookings.schedule_id = ds.schedule_id "
+            + "LEFT JOIN ("
+            + "   SELECT schedule_id, COUNT(*) AS booked_count "
+            + "   FROM Appointment "
+            + "   WHERE LOWER(status) IN ('waiting', 'in_progress', 'in-progress', 'completed', 'no_show') "
+            + "   GROUP BY schedule_id"
+            + ") booked_bookings ON booked_bookings.schedule_id = ds.schedule_id "
                 + "WHERE 1=1"
         );
 
@@ -1122,6 +1532,7 @@ public class AdminDAO {
 
                     int maxPatients = rs.getInt("max_patients");
                     int activeCount = rs.getInt("active_count");
+                    int bookedCount = rs.getInt("booked_count");
                     String status = rs.getString("status");
 
                     row.put("scheduleId", rs.getInt("schedule_id"));
@@ -1142,6 +1553,8 @@ public class AdminDAO {
                  * Giữ lại activeCount nếu chỗ khác trong code vẫn đang dùng.
                      */
                     row.put("activeCount", activeCount);
+                    row.put("bookedAppointments", bookedCount);
+                    row.put("bookedCount", bookedCount);
 
                     /*
                  * status là trạng thái thật trong database.
@@ -1156,7 +1569,7 @@ public class AdminDAO {
                      */
                     row.put("effectiveStatus", status);
 
-                    row.put("isFull", "Full".equalsIgnoreCase(status) || activeCount >= maxPatients);
+                    row.put("isFull", "Full".equalsIgnoreCase(status) || bookedCount >= maxPatients);
                     row.put("isExpired", "Expired".equalsIgnoreCase(status));
                     row.put("isCancelled", "Cancelled".equalsIgnoreCase(status));
                     row.put("isAvailable", "Available".equalsIgnoreCase(status));
@@ -1772,6 +2185,8 @@ public class AdminDAO {
 
     // Lấy các ca đang chờ/đang khám để điều phối ngoại lệ.
     public List<Map<String, Object>> getExceptionQueue(Integer doctorId) {
+        markLateWaitingAppointmentsAsNoShow();
+
         List<Map<String, Object>> rows = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT a.appointment_id, a.status AS appointment_status, a.appointment_time, "
@@ -1781,7 +2196,9 @@ public class AdminDAO {
                 + "LEFT JOIN Doctor_Schedule ds ON a.schedule_id = ds.schedule_id "
                 + "LEFT JOIN Doctor d ON ds.doctor_id = d.doctor_id "
                 + "LEFT JOIN Patient p ON a.patient_id = p.patient_id "
-                + "WHERE a.status IN ('Waiting', 'In_Progress')"
+                + "WHERE a.status IN ('Waiting', 'In_Progress') "
+                + "AND CAST(a.appointment_time AS DATE) = CAST(GETDATE() AS DATE) "
+                + "AND a.appointment_time <= GETDATE()"
         );
         List<Object> params = new ArrayList<>();
         if (doctorId != null) {
@@ -1883,21 +2300,90 @@ public class AdminDAO {
         return doctors;
     }
 
+    // Lấy bác sĩ có lịch không hủy trong ngày của appointment cần điều phối.
+    public List<Map<String, Object>> getEmergencyCandidateDoctorsForAppointment(int appointmentId, Integer excludeDoctorId) {
+        List<Map<String, Object>> doctors = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+                "SELECT DISTINCT d.doctor_id, d.full_name, d.department "
+                + "FROM Appointment ap "
+                + "JOIN Doctor_Schedule src_ds ON src_ds.schedule_id = ap.schedule_id "
+                + "JOIN Doctor_Schedule ds ON ds.work_date = src_ds.work_date "
+                + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
+                + "JOIN Account a ON a.account_id = d.account_id "
+                + "WHERE ap.appointment_id = ? "
+                + "AND LOWER(a.status) = 'active' "
+                + "AND LOWER(ds.status) <> 'cancelled'"
+        );
+        List<Object> params = new ArrayList<>();
+        params.add(appointmentId);
+
+        if (excludeDoctorId != null) {
+            sql.append(" AND d.doctor_id <> ?");
+            params.add(excludeDoctorId);
+        }
+
+        sql.append(" ORDER BY d.department, d.full_name ASC");
+
+        try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            bindParams(statement, params);
+            try (ResultSet rs = statement.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("doctorId", rs.getInt("doctor_id"));
+                    row.put("fullName", rs.getString("full_name"));
+                    row.put("department", rs.getString("department"));
+                    doctors.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load emergency candidate doctors for appointmentId=" + appointmentId, e);
+        }
+
+        return doctors;
+    }
+
     // Tái gán lịch hẹn sang bác sĩ khác trong luồng điều phối khẩn.
     public boolean reassignAppointmentToDoctor(int appointmentId, int targetDoctorId) {
-        String pickScheduleSql = "SELECT TOP 1 ds.schedule_id "
+        String pickSameDayScheduleSql = "SELECT TOP 1 ds.schedule_id "
+                + "FROM Appointment ap "
+                + "JOIN Doctor_Schedule src_ds ON src_ds.schedule_id = ap.schedule_id "
+                + "JOIN Doctor_Schedule ds ON ds.doctor_id = ? "
+                + "WHERE ap.appointment_id = ? "
+                + "AND ds.work_date = src_ds.work_date "
+                + "AND LOWER(ds.status) <> 'cancelled' "
+                + "ORDER BY TRY_CAST(LEFT(REPLACE(ds.time_slot, ' ', ''), 5) AS time) ASC";
+
+        String pickFallbackScheduleSql = "SELECT TOP 1 ds.schedule_id "
                 + "FROM Doctor_Schedule ds "
-                + "WHERE ds.doctor_id = ? AND ds.status = 'Available' AND ds.work_date >= CAST(GETDATE() AS DATE) "
-                + "ORDER BY ds.work_date ASC, ds.time_slot ASC";
-        String updateAppointmentSql = "UPDATE Appointment SET schedule_id = ? WHERE appointment_id = ?";
+                + "WHERE ds.doctor_id = ? "
+                + "AND LOWER(ds.status) <> 'cancelled' "
+                + "AND ds.work_date >= CAST(GETDATE() AS DATE) "
+                + "ORDER BY ds.work_date ASC, TRY_CAST(LEFT(REPLACE(ds.time_slot, ' ', ''), 5) AS time) ASC";
+
+        String updateAppointmentSql = "UPDATE Appointment "
+                + "SET schedule_id = ?, doctor_id = ? "
+                + "WHERE appointment_id = ? AND LOWER(status) IN ('waiting', 'in_progress', 'in-progress')";
 
         try (Connection connection = DatabaseConnection.getConnection()) {
             Integer targetScheduleId = null;
-            try (PreparedStatement pick = connection.prepareStatement(pickScheduleSql)) {
+
+            try (PreparedStatement pick = connection.prepareStatement(pickSameDayScheduleSql)) {
                 pick.setInt(1, targetDoctorId);
+                pick.setInt(2, appointmentId);
                 try (ResultSet rs = pick.executeQuery()) {
                     if (rs.next()) {
                         targetScheduleId = rs.getInt("schedule_id");
+                    }
+                }
+            }
+
+            if (targetScheduleId == null) {
+                try (PreparedStatement pick = connection.prepareStatement(pickFallbackScheduleSql)) {
+                    pick.setInt(1, targetDoctorId);
+                    try (ResultSet rs = pick.executeQuery()) {
+                        if (rs.next()) {
+                            targetScheduleId = rs.getInt("schedule_id");
+                        }
                     }
                 }
             }
@@ -1908,7 +2394,8 @@ public class AdminDAO {
 
             try (PreparedStatement update = connection.prepareStatement(updateAppointmentSql)) {
                 update.setInt(1, targetScheduleId);
-                update.setInt(2, appointmentId);
+                update.setInt(2, targetDoctorId);
+                update.setInt(3, appointmentId);
                 return update.executeUpdate() > 0;
             }
         } catch (SQLException e) {
@@ -1919,6 +2406,8 @@ public class AdminDAO {
 
     // Đồng bộ trạng thái lịch trực theo thời gian và số appointment đang hoạt động.
     public int refreshDoctorScheduleStatusFromAppointments() {
+        markLateWaitingAppointmentsAsNoShow();
+
         String sql = "UPDATE ds SET ds.status = CASE "
                 + "WHEN LOWER(ds.status) = 'cancelled' THEN 'Cancelled' "
                 + "WHEN LOWER(ds.status) = 'expired' THEN 'Expired' "
@@ -1926,15 +2415,16 @@ public class AdminDAO {
                 + "WHEN ds.work_date = CAST(GETDATE() AS DATE) "
                 + "     AND TRY_CONVERT(time, LEFT(LTRIM(RTRIM(SUBSTRING(ds.time_slot, CHARINDEX('-', ds.time_slot) + 1, 20))), 5)) <= CAST(GETDATE() AS time) "
                 + "THEN 'Expired' "
-                + "WHEN active_count.active_appointments >= ds.max_patients THEN 'Full' "
+                + "WHEN counts.booked_appointments >= ds.max_patients THEN 'Full' "
                 + "ELSE 'Available' END "
                 + "FROM Doctor_Schedule ds "
                 + "OUTER APPLY ("
-                + "   SELECT COUNT(*) AS active_appointments "
+                + "   SELECT "
+                + "      SUM(CASE WHEN LOWER(ap.status) IN ('waiting', 'in_progress', 'in-progress') THEN 1 ELSE 0 END) AS active_appointments, "
+                + "      SUM(CASE WHEN LOWER(ap.status) IN ('waiting', 'in_progress', 'in-progress', 'completed', 'no_show') THEN 1 ELSE 0 END) AS booked_appointments "
                 + "   FROM Appointment ap "
                 + "   WHERE ap.schedule_id = ds.schedule_id "
-                + "   AND LOWER(ap.status) IN ('waiting', 'in_progress', 'in-progress')"
-                + ") active_count "
+                + ") counts "
                 + "WHERE LOWER(ds.status) <> 'cancelled'";
 
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -2061,7 +2551,7 @@ public class AdminDAO {
                 + "LEFT JOIN Doctor d_direct ON d_direct.doctor_id = ap.doctor_id "
                 + "LEFT JOIN Doctor_Schedule ds ON ds.schedule_id = ap.schedule_id "
                 + "LEFT JOIN Doctor d_schedule ON d_schedule.doctor_id = ds.doctor_id "
-                + "WHERE LOWER(ap.status) = 'completed' AND " + periodFilter + " "
+            + "WHERE LOWER(ap.status) IN ('completed', 'no_show') AND " + periodFilter + " "
                 + "ORDER BY ap.appointment_time DESC";
 
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(appointmentSql)) {

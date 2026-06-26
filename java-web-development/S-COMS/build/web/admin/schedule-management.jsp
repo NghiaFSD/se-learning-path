@@ -3,6 +3,8 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <fmt:setLocale value="vi_VN" />
 
+<c:set var="currentAction" value="schedule" />
+
 <%--
     Trang Quản lý lịch trực bác sĩ:
     - Lọc, xem tải ca trực theo bác sĩ/khoa/ngày
@@ -23,12 +25,12 @@
         <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
         <style>
             .schedule-load-cell {
-                min-width: 280px;
+                min-width: 220px;
             }
 
             .schedule-load-wrap {
                 display: grid;
-                grid-template-columns: minmax(120px, 1fr) 66px 96px;
+                grid-template-columns: minmax(84px, 1fr) 56px 80px;
                 align-items: center;
                 column-gap: 0.5rem;
             }
@@ -39,9 +41,23 @@
             }
 
             .schedule-load-percent {
-                min-width: 66px;
+                min-width: 56px;
                 text-align: center;
                 font-weight: 600;
+            }
+
+            .schedule-table > :not(caption) > * > * {
+                padding: 0.68rem 0.55rem;
+            }
+
+            .schedule-table thead th {
+                white-space: normal;
+                line-height: 1.2;
+                font-size: 0.78rem;
+            }
+
+            .schedule-table td {
+                font-size: 0.95rem;
             }
 
 
@@ -112,11 +128,11 @@
                 border: 1px solid rgba(111, 66, 193, 0.22);
             }
             .schedule-load-state {
-                min-width: 96px;
+                min-width: 80px;
                 line-height: 1;
                 margin: 0;
                 text-align: left;
-                white-space: nowrap;
+                white-space: normal;
             }
 
             .ai-step-banner,
@@ -141,26 +157,36 @@
 
             .weekday-options {
                 display: grid;
-                grid-template-columns: repeat(7, minmax(82px, 1fr));
-                gap: 0.6rem;
+                grid-template-columns: repeat(7, minmax(50px, 1fr));
+                gap: 0.3rem;
             }
 
             #aiScheduleModal .modal-dialog {
-                max-width: 760px;
+                max-width: 580px;
             }
 
             #aiScheduleModal .modal-header,
             #aiScheduleModal .modal-body,
             #aiScheduleModal .modal-footer {
-                padding: 0.9rem 1rem;
+                padding: 0.7rem 0.85rem;
+            }
+
+            #aiScheduleModal .modal-header h5 {
+                margin-bottom: 0.2rem !important;
+            }
+
+            #aiScheduleModal .modal-header .small {
+                font-size: 0.75rem;
             }
 
             #aiScheduleModal .modal-title {
-                font-size: 1.35rem;
+                font-size: 1.15rem;
+                font-weight: 600;
             }
 
             #aiScheduleModal .form-label {
-                margin-bottom: 0.35rem;
+                margin-bottom: 0.25rem;
+                font-size: 0.9rem;
             }
 
             #aiScheduleModal .ai-section-number {
@@ -175,18 +201,72 @@
                 border-radius: 9px;
             }
 
+            #aiScheduleModal .row {
+                --bs-gutter-x: 0.75rem;
+                --bs-gutter-y: 0.5rem;
+                margin-right: calc(var(--bs-gutter-x) * -0.5) !important;
+                margin-left: calc(var(--bs-gutter-x) * -0.5) !important;
+            }
+
+            #aiScheduleModal .col-md-4,
+            #aiScheduleModal .col-md-6,
+            #aiScheduleModal .col-12 {
+                margin-bottom: 0.45rem;
+            }
+
+            #aiScheduleModal .form-control,
+            #aiScheduleModal .form-select,
+            #aiScheduleModal .input-group {
+                font-size: 0.9rem;
+                padding: 0.35rem 0.55rem;
+            }
+
             #aiScheduleModal .template-preview {
-                max-height: 150px;
+                max-height: 100px;
+                font-size: 0.85rem;
             }
 
             #aiScheduleModal .ai-step-banner,
             #aiScheduleModal .ai-task-summary {
                 border-radius: 12px;
+                padding: 0.5rem 0.7rem !important;
+                margin-bottom: 0.3rem !important;
+                font-size: 0.85rem;
+            }
+
+            #aiScheduleModal .ai-task-summary .fw-bold {
+                font-size: 0.85rem;
+                margin-bottom: 0.15rem !important;
+            }
+
+            #aiScheduleModal .ai-task-summary div:last-child {
+                font-size: 0.8rem;
             }
 
             #aiScheduleModal .btn {
-                padding-top: 0.45rem;
-                padding-bottom: 0.45rem;
+                padding: 0.35rem 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            .cursor-pointer {
+                cursor: pointer;
+                user-select: none;
+            }
+
+            #aiDepartmentList .badge {
+                cursor: pointer;
+                transition: opacity 0.2s;
+                font-size: 0.8rem;
+                padding: 0.3rem 0.5rem;
+            }
+
+            #aiDepartmentList .badge:hover {
+                opacity: 0.8;
+            }
+
+            #aiScheduleModal .input-group-sm > .btn {
+                padding: 0.25rem 0.55rem;
+                font-size: 0.85rem;
             }
 
             .weekday-option {
@@ -201,13 +281,15 @@
 
             .weekday-option label {
                 display: block;
-                padding: 0.65rem 0.45rem;
+                padding: 0.4rem 0.3rem;
                 border: 1px solid #dee2e6;
-                border-radius: 10px;
+                border-radius: 8px;
                 background: #fff;
                 text-align: center;
                 cursor: pointer;
                 transition: 0.18s ease;
+                font-size: 0.8rem;
+                white-space: nowrap;
             }
 
             .weekday-option input:checked + label {
@@ -245,18 +327,49 @@
     </head>
     <body class="bg-light">
         <div class="container py-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <h3 class="mb-1">Quản lý Lịch trực Bác sĩ</h3>
+            <div class="admin-layout row g-3">
+                <div class="col-lg-3 admin-sidebar-col">
+                    <%@ include file="/admin/fragments/sidebar.jspf" %>
                 </div>
-                <div class="d-flex gap-2">
-                    <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/admin">Dashboard</a>
-                    <button type="button" id="aiScheduleGeminiBtn" class="btn bg-purple-subtle text-purple fw-bold ai-schedule-toolbar-btn" data-bs-toggle="modal" data-bs-target="#aiScheduleModal">
-                        <i class="fa-solid fa-brain me-2"></i>AI Lập Lịch (Gemini)
-                    </button>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScheduleModal">Tạo lịch trực mới</button>
-                </div>
-            </div>
+                <div class="col-lg-9 admin-content-col">
+                    <div class="admin-page-header d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h3 class="mb-1">Quản lý Lịch trực Bác sĩ</h3>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" id="aiScheduleGeminiBtn" class="btn bg-purple-subtle text-purple fw-bold ai-schedule-toolbar-btn" data-bs-toggle="modal" data-bs-target="#aiScheduleModal">
+                                <i class="fa-solid fa-brain me-2"></i>AI Lập Lịch (Gemini)
+                            </button>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScheduleModal">Tạo lịch trực mới</button>
+                        </div>
+                    </div>
+
+                    <!-- Modal chuyển giao ca trực (AJAX) -->
+                    <div class="modal fade" id="transferScheduleModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Chuyển giao ca trực</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div id="transferAlert" class="alert d-none" role="alert"></div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Ca đang chọn</label>
+                                        <div id="transferSelectedInfo" class="fw-semibold"></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Chọn bác sĩ nhận ca</label>
+                                        <select id="transferTargetDoctor" class="form-select"></select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                                    <button type="button" id="transferConfirmBtn" class="btn btn-primary">Xác nhận chuyển giao</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
             <c:if test="${not empty sessionScope.successMessage}">
                 <div class="alert alert-success">${sessionScope.successMessage}</div>
@@ -284,6 +397,9 @@
                                     <option value="${dep}" ${selectedDepartment == dep ? 'selected' : ''}>
                                         <c:choose>
                                             <c:when test="${dep == 'Endocrinology'}">Nội tiết - Tiểu đường</c:when>
+                                            <c:when test="${dep == 'Cardiology'}">Tim mạch</c:when>
+                                            <c:when test="${dep == 'Nephrology'}">Thận học</c:when>
+                                            <c:when test="${dep == 'General'}">Tổng quát</c:when>
                                             <c:otherwise>${dep}</c:otherwise>
                                         </c:choose>
                                     </option>
@@ -309,7 +425,7 @@
             <div class="card">
                 <div class="card-header fw-semibold">Danh sách lịch trực</div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0 schedule-table">
                         <thead class="table-light">
                             <tr>
                                 <th>Tên bác sĩ</th>
@@ -331,20 +447,28 @@
                                 </tr>
                             </c:if>
                             <c:forEach var="s" items="${schedules}">
-                                <c:set var="loadPct" value="${s.maxPatients > 0 ? (s.activeAppointments * 100.0 / s.maxPatients) : 0}" />
-                                <tr data-schedule-id="${s.scheduleId}" data-doctor-name="${s.doctorName}" data-department="${s.department}" data-load-pct="${loadPct}" data-active-appointments="${s.activeAppointments}" data-max-patients="${s.maxPatients}">
+                                <c:set var="bookedAppointments" value="${empty s.bookedAppointments ? 0 : s.bookedAppointments}" />
+                                <c:set var="activeAppointments" value="${empty s.activeAppointments ? 0 : s.activeAppointments}" />
+                                <c:set var="loadPct" value="${s.maxPatients > 0 ? (bookedAppointments * 100.0 / s.maxPatients) : 0}" />
+                                <tr data-schedule-id="${s.scheduleId}" data-doctor-name="${s.doctorName}" data-department="${s.department}" data-load-pct="${loadPct}" data-active-appointments="${activeAppointments}" data-booked-appointments="${bookedAppointments}" data-max-patients="${s.maxPatients}">
                                     <td>${s.doctorName}</td>
                                     <td>
                                         <c:choose>
                                             <c:when test="${s.department == 'Endocrinology'}">Nội tiết - Tiểu đường</c:when>
+                                            <c:when test="${s.department == 'Cardiology'}">Tim mạch</c:when>
+                                            <c:when test="${s.department == 'Nephrology'}">Thận học</c:when>
+                                            <c:when test="${s.department == 'General'}">Tổng quát</c:when>
                                             <c:otherwise>${s.department}</c:otherwise>
                                         </c:choose>
                                     </td>
                                     <td><fmt:formatDate value="${s.workDate}" pattern="dd/MM/yyyy" /></td>
                                     <td>${s.timeSlot}</td>
-                                    <td><div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">${s.activeAppointments} / ${s.maxPatients}</div></td>
+                                    <td>
+                                        <div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">${bookedAppointments} / ${s.maxPatients}</div>
+                                        <small class="text-muted d-block text-center mt-1">Đang chờ/khám: ${activeAppointments}</small>
+                                    </td>
                                     <td class="schedule-load-cell">
-                                        <div class="schedule-load-wrap" title="${loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận full' : 'Bình thường')}">
+                                        <div class="schedule-load-wrap" title="${loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')}">
                                             <div class="progress schedule-load-progress">
                                                 <div class="progress-bar ${loadPct >= 100 ? 'bg-danger' : (loadPct >= 80 ? 'bg-warning' : 'bg-success')}"
                                                      role="progressbar"
@@ -354,7 +478,7 @@
                                             <span class="badge schedule-load-percent ${loadPct >= 100 ? 'text-bg-danger' : (loadPct >= 80 ? 'text-bg-warning' : 'text-bg-success')}">
                                                 <fmt:formatNumber value="${loadPct}" maxFractionDigits="0"/>%
                                             </span>
-                                            <small class="text-muted schedule-load-state">${loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận full' : 'Bình thường')}</small>
+                                            <small class="text-muted schedule-load-state">${loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')}</small>
                                         </div>
                                     </td>
                                     <td>
@@ -405,6 +529,10 @@
                                             </c:when>
 
                                             <c:otherwise>
+                                                <a href="#" class="btn btn-sm btn-outline-primary me-2 transfer-btn"
+                                                   onclick="openTransferModalFromRow(this); return false;">
+                                                    <i class="bi bi-arrow-left-right"></i> Chuyển giao
+                                                </a>
                                                 <form method="post" action="${pageContext.request.contextPath}/admin" class="d-inline"
                                                       onsubmit="return confirm('Bạn chắc chắn muốn hủy ca trực này?');">
                                                     <input type="hidden" name="action" value="cancelSchedule">
@@ -423,6 +551,51 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <c:if test="${not empty selectedSchedule}">
+                <div class="card mt-4 border-primary-subtle">
+                    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                        <span>Chuyển giao ca trực</span>
+                        <a class="btn btn-sm btn-outline-secondary" href="${pageContext.request.contextPath}/admin?action=schedule">Đóng</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="small text-muted mb-1">Ca đang chọn</div>
+                            <div class="fw-semibold">
+                                ${selectedSchedule.doctorName} -
+                                <c:choose>
+                                    <c:when test="${selectedSchedule.department == 'Endocrinology'}">Nội tiết - Tiểu đường</c:when>
+                                    <c:when test="${selectedSchedule.department == 'Cardiology'}">Tim mạch</c:when>
+                                    <c:when test="${selectedSchedule.department == 'Nephrology'}">Thận học</c:when>
+                                    <c:when test="${selectedSchedule.department == 'General'}">Tổng quát</c:when>
+                                    <c:otherwise>${selectedSchedule.department}</c:otherwise>
+                                </c:choose>
+                                - <fmt:formatDate value="${selectedSchedule.workDate}" pattern="dd/MM/yyyy" />
+                                - ${selectedSchedule.timeSlot}
+                            </div>
+                        </div>
+                        <form method="post" action="${pageContext.request.contextPath}/admin" class="row g-3">
+                            <input type="hidden" name="action" value="transferSchedule">
+                            <input type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+                            <input type="hidden" name="scheduleId" value="${selectedSchedule.scheduleId}">
+                            <div class="col-md-8">
+                                <label class="form-label">Chọn bác sĩ nhận ca</label>
+                                <select class="form-select" name="targetDoctorId" required>
+                                    <option value="">-- Chọn bác sĩ thay thế --</option>
+                                    <c:forEach var="d" items="${transferCandidates}">
+                                        <option value="${d.doctorId}">${d.fullName} - ${d.department}</option>
+                                    </c:forEach>
+                                </select>
+                                <small class="text-muted">Hệ thống sẽ kiểm tra trùng ca và chỉ cho phép chuyển sang bác sĩ còn khả dụng.</small>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Xác nhận chuyển giao</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </c:if>
             </div>
         </div>
 
@@ -490,13 +663,39 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label fw-bold">
-                                        <span class="ai-section-number">1</span>CHỌN KHUNG MẪU CA TRỰC CÓ SẴN
+                                        <span class="ai-section-number">1</span>THIẾT KẾ KHUNG CA TRỰC
                                     </label>
-                                    <select class="form-select" id="aiScheduleTemplate">
-                                        <option value="weekday" selected>Khung ngày thường (6 ca/ngày)</option>
-                                        <option value="compact">Khung rút gọn (3 ca/ngày)</option>
-                                        <option value="extended">Khung tăng cường (6 ca/ngày)</option>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Giờ bắt đầu</label>
+                                    <input type="time" class="form-control" id="aiStartTime" value="07:00" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Giờ kết thúc</label>
+                                    <input type="time" class="form-control" id="aiEndTime" value="19:00" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Giãn cách (phút)</label>
+                                    <select class="form-select" id="aiSlotDuration" required>
+                                        <option value="30">30 phút</option>
+                                        <option value="60" selected>60 phút (1 tiếng)</option>
+                                        <option value="90">90 phút</option>
+                                        <option value="120">120 phút (2 tiếng)</option>
+                                        <option value="180">180 phút (3 tiếng)</option>
                                     </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Phân bổ chuyên khoa cho từng ca <small class="text-muted">(nhập lặp lại để chuyên khoa khác nhau)</small></label>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <input type="text" class="form-control" id="aiDepartmentInput" placeholder="Nội tiết - Tiểu đường, Tim mạch, Thận học, Tổng quát, ...">
+                                        <button class="btn btn-outline-secondary" type="button" id="aiAddDepartmentBtn">Thêm</button>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2" id="aiDepartmentList">
+                                        <span class="badge bg-info text-dark cursor-pointer" data-dept="Nội tiết - Tiểu đường">Nội tiết - Tiểu đường ✕</span>
+                                        <span class="badge bg-info text-dark cursor-pointer" data-dept="Tim mạch">Tim mạch ✕</span>
+                                        <span class="badge bg-info text-dark cursor-pointer" data-dept="Thận học">Thận học ✕</span>
+                                        <span class="badge bg-info text-dark cursor-pointer" data-dept="Tổng quát">Tổng quát ✕</span>
+                                    </div>
                                 </div>
 
                                 <div class="col-12">
@@ -537,9 +736,7 @@
                                         <option value="1" selected>1 bác sĩ/ca</option>
                                         <option value="2">2 bác sĩ/ca</option>
                                         <option value="3">3 bác sĩ/ca</option>
-                                        <option value="4">4 bác sĩ/ca</option>
                                     </select>
-                                    <div class="form-text">Ví dụ: 6 khung giờ x 2 bác sĩ = 12 slot/ngày.</div>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-semibold">Tổng số slot bác sĩ phải tạo</label>
@@ -547,16 +744,11 @@
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-semibold">Xem trước khung mẫu ca trực</label>
-                                    <textarea class="form-control font-monospace template-preview" name="shiftTemplates" rows="6" required readonly>07:00-09:00|Mắt
-09:00-11:00|Nội tiết - Tiểu đường
-11:00-13:00|Tim mạch
-13:00-15:00|Thần kinh
-15:00-17:00|Nội tiết - Tiểu đường
-17:00-19:00|Mắt</textarea>
+                                    <textarea class="form-control font-monospace template-preview" name="shiftTemplates" rows="8" required readonly></textarea>
                                 </div>
                                 <input type="hidden" name="startTime" value="07:00">
                                 <input type="hidden" name="endTime" value="19:00">
-                                <input type="hidden" name="slotMinutes" value="120">
+                                <input type="hidden" name="slotMinutes" value="60">
                                 <input type="hidden" name="department" value="">
                                 <div class="col-12">
                                     <div class="ai-task-summary p-3">
@@ -577,6 +769,109 @@
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Transfer schedule AJAX support
+            async function openTransferModal(scheduleId, doctorName, department, workDate, timeSlot) {
+                const modalEl = document.getElementById('transferScheduleModal');
+                const bsModal = new bootstrap.Modal(modalEl);
+                document.getElementById('transferSelectedInfo').textContent = doctorName + ' - ' + department + ' - ' + workDate + ' - ' + timeSlot;
+                const select = document.getElementById('transferTargetDoctor');
+                select.innerHTML = '<option>Đang tải...</option>';
+                try {
+                    const resp = await fetch('${pageContext.request.contextPath}/admin?action=getTransferCandidates&scheduleId=' + encodeURIComponent(scheduleId), {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.json();
+                    const currentId = data.currentDoctorId || null;
+                    const items = data.items || [];
+                    let options = '<option value="">-- Chọn bác sĩ thay thế --</option>';
+                    for (const d of items) {
+                        if (currentId && String(d.doctorId) === String(currentId)) continue; // skip current doctor
+                        options += '<option value="' + d.doctorId + '">' + escapeHtml(d.fullName) + ' - ' + escapeHtml(d.department) + '</option>';
+                    }
+                    select.innerHTML = options;
+                } catch (err) {
+                    select.innerHTML = '<option value="">Không tải được danh sách bác sĩ</option>';
+                }
+                // attach schedule id to confirm button
+                document.getElementById('transferConfirmBtn').setAttribute('data-schedule-id', scheduleId);
+                bsModal.show();
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str || '';
+                return div.innerHTML;
+            }
+
+            document.getElementById('transferConfirmBtn').addEventListener('click', async function () {
+                const scheduleId = this.getAttribute('data-schedule-id');
+                const targetDoctorId = document.getElementById('transferTargetDoctor').value;
+                const alertBox = document.getElementById('transferAlert');
+                alertBox.className = 'alert d-none';
+                if (!targetDoctorId) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Vui lòng chọn bác sĩ nhận ca.';
+                    return;
+                }
+                try {
+                    const params = new URLSearchParams();
+                    params.set('action', 'transferSchedule');
+                    params.set('scheduleId', scheduleId);
+                    params.set('targetDoctorId', targetDoctorId);
+                    params.set('csrfToken', '${sessionScope.csrfToken}');
+                    const resp = await fetch('${pageContext.request.contextPath}/admin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: params.toString()
+                    });
+                    let json = null;
+                    try { json = await resp.json(); } catch (e) { /* ignore parse error */ }
+                    if (json && json.success) {
+                        alertBox.className = 'alert alert-success';
+                        alertBox.textContent = json.message || 'Đã chuyển giao ca trực';
+                        // Update table row in-place if present
+                        const row = document.querySelector('tr[data-schedule-id="' + scheduleId + '"]');
+                        if (row) {
+                            row.setAttribute('data-doctor-name', json.targetDoctorName || '');
+                            const firstTd = row.querySelector('td');
+                            if (firstTd) firstTd.textContent = json.targetDoctorName || firstTd.textContent;
+                        }
+                        // close modal after short delay
+                        setTimeout(() => {
+                            const bsModal = bootstrap.Modal.getInstance(document.getElementById('transferScheduleModal'));
+                            if (bsModal) bsModal.hide();
+                        }, 900);
+                    } else {
+                        const msg = (json && json.message) ? json.message : ('HTTP ' + resp.status);
+                        alertBox.className = 'alert alert-danger';
+                        alertBox.textContent = 'Không thể chuyển giao ca: ' + msg;
+                    }
+                } catch (err) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = 'Lỗi khi gửi yêu cầu: ' + err.message;
+                }
+            });
+
+            // Expose helper to global for inline onclick
+            window.openTransferModal = openTransferModal;
+
+            // Helper: find row data and open modal
+            function openTransferModalFromRow(el) {
+                const tr = el.closest('tr');
+                if (!tr) return;
+                const scheduleId = tr.getAttribute('data-schedule-id');
+                const doctorName = tr.getAttribute('data-doctor-name') || tr.querySelector('td')?.textContent || '';
+                const department = tr.getAttribute('data-department') || '';
+                const workDate = tr.querySelector('td:nth-child(3)')?.textContent.trim() || '';
+                const timeSlot = tr.querySelector('td:nth-child(4)')?.textContent.trim() || '';
+                openTransferModal(scheduleId, doctorName, department, workDate, timeSlot);
+            }
+        </script>
         <script>
                                                           const adminScheduleEndpoint = '${pageContext.request.contextPath}/admin';
 
@@ -603,35 +898,85 @@
 
                                                           function countShiftTemplateLines() {
                                                               const textarea = document.querySelector('textarea[name="shiftTemplates"]');
-                                                              if (!textarea) {
-                                                                  return 0;
-                                                              }
-                                                              return textarea.value.split(/\r?\n/).filter(line => line.trim().includes('|')).length;
+                                                              return textarea ? textarea.value.split(/\r?\n/).filter(line => line.trim().includes('|')).length : 0;
                                                           }
 
-                                                          const scheduleTemplates = {
-                                                              weekday: [
-                                                                  '07:00-09:00|Mắt',
-                                                                  '09:00-11:00|Nội tiết - Tiểu đường',
-                                                                  '11:00-13:00|Tim mạch',
-                                                                  '13:00-15:00|Thần kinh',
-                                                                  '15:00-17:00|Nội tiết - Tiểu đường',
-                                                                  '17:00-19:00|Mắt'
-                                                              ],
-                                                              compact: [
-                                                                  '07:00-11:00|Mắt',
-                                                                  '11:00-15:00|Nội tiết - Tiểu đường',
-                                                                  '15:00-19:00|Tim mạch'
-                                                              ],
-                                                              extended: [
-                                                                  '06:00-09:00|Mắt',
-                                                                  '09:00-12:00|Nội tiết - Tiểu đường',
-                                                                  '12:00-15:00|Tim mạch',
-                                                                  '15:00-18:00|Thần kinh',
-                                                                  '18:00-21:00|Nội tiết - Tiểu đường',
-                                                                  '21:00-23:00|Mắt'
-                                                              ]
+                                                          const departmentMapping = {
+                                                              'Nội tiết - Tiểu đường': 'Endocrinology',
+                                                              'Endocrinology': 'Endocrinology',
+                                                              'Tim mạch': 'Cardiology',
+                                                              'Cardiology': 'Cardiology',
+                                                              'Thận học': 'Nephrology',
+                                                              'Nephrology': 'Nephrology',
+                                                              'Tổng quát': 'General',
+                                                              'General': 'General'
                                                           };
+
+                                                          function buildCustomShiftTemplate() {
+                                                              const startTimeInput = document.getElementById('aiStartTime');
+                                                              const endTimeInput = document.getElementById('aiEndTime');
+                                                              const slotDurationInput = document.getElementById('aiSlotDuration');
+                                                              const deptList = document.getElementById('aiDepartmentList');
+                                                              
+                                                              if (!startTimeInput || !endTimeInput || !slotDurationInput || !deptList) {
+                                                                  return [];
+                                                              }
+                                                              
+                                                              const startTime = startTimeInput.value;
+                                                              const endTime = endTimeInput.value;
+                                                              const slotMinutes = parseInt(slotDurationInput.value);
+                                                              
+                                                              if (!startTime || !endTime || isNaN(slotMinutes)) {
+                                                                  return [];
+                                                              }
+                                                              
+                                                              const departments = Array.from(deptList.querySelectorAll('.badge'))
+                                                                  .map(badge => badge.getAttribute('data-dept'))
+                                                                  .filter(dept => dept);
+                                                              
+                                                              if (departments.length === 0) {
+                                                                  return [];
+                                                              }
+                                                              
+                                                              const slots = [];
+                                                              try {
+                                                                  const [startHour, startMin] = startTime.split(':').map(Number);
+                                                                  const [endHour, endMin] = endTime.split(':').map(Number);
+                                                                  
+                                                                  let currentMinutes = startHour * 60 + startMin;
+                                                                  const endMinutes = endHour * 60 + endMin;
+                                                                  let deptIndex = 0;
+                                                                  
+                                                                  while (currentMinutes + slotMinutes <= endMinutes) {
+                                                                      const slotStart = Math.floor(currentMinutes / 60);
+                                                                      const slotStartMin = currentMinutes % 60;
+                                                                      const slotEnd = Math.floor((currentMinutes + slotMinutes) / 60);
+                                                                      const slotEndMin = (currentMinutes + slotMinutes) % 60;
+                                                                      
+                                                                      const timeSlot = String(slotStart).padStart(2, '0') + ':' + String(slotStartMin).padStart(2, '0')
+                                                                          + '-' + String(slotEnd).padStart(2, '0') + ':' + String(slotEndMin).padStart(2, '0');
+                                                                      
+                                                                      const dept = departments[deptIndex % departments.length];
+                                                                      slots.push(timeSlot + '|' + dept);
+                                                                      
+                                                                      currentMinutes += slotMinutes;
+                                                                      deptIndex++;
+                                                                  }
+                                                              } catch (e) {
+                                                                  console.error('Error building custom shift template:', e);
+                                                              }
+                                                              
+                                                              return slots;
+                                                          }
+
+                                                          function updateTemplatePreview() {
+                                                              const textarea = document.querySelector('textarea[name="shiftTemplates"]');
+                                                              if (textarea) {
+                                                                  const slots = buildCustomShiftTemplate();
+                                                                  textarea.value = slots.join('\n');
+                                                              }
+                                                              updateAiMaxSchedules();
+                                                          }
 
                                                           function getSelectedWeekdays() {
                                                               return Array.from(document.querySelectorAll('input[name="selectedWeekdays"]:checked'))
@@ -708,11 +1053,16 @@
                                                           function buildScheduleRow(schedule) {
                                                               const maxPatients = Number(schedule.maxPatients || 20);
                                                               const activeAppointments = Number(schedule.activeAppointments || 0);
-                                                              const loadPct = 0;
+                                                              const bookedAppointments = Number(schedule.bookedAppointments || schedule.bookedCount || activeAppointments || 0);
+                                                              const loadPct = maxPatients > 0 ? Math.round((bookedAppointments * 100) / maxPatients) : 0;
 
-                                                              const department = schedule.department === 'Endocrinology'
-                                                                      ? 'Nội tiết - Tiểu đường'
-                                                                      : (schedule.department || 'Chưa xác định');
+                                                              const departmentMap = {
+                                                                  Endocrinology: 'Nội tiết - Tiểu đường',
+                                                                  Cardiology: 'Tim mạch',
+                                                                  Nephrology: 'Thận học',
+                                                                  General: 'Tổng quát'
+                                                              };
+                                                              const department = departmentMap[schedule.department] || (schedule.department || 'Chưa xác định');
 
                                                               const isGemini = schedule.source === 'Gemini AI';
                                                               const sourceLabel = isGemini ? 'Gemini AI tạo lịch' : 'Cân bằng tải dự phòng';
@@ -746,7 +1096,7 @@
 
                                                               return '<tr class="ai-generated-row" data-schedule-id="' + (schedule.scheduleId || '') + '" data-doctor-name="' + escapeHtmlForSchedule(schedule.doctorName)
                                                                       + '" data-department="' + escapeHtmlForSchedule(schedule.department || '')
-                                                                      + '" data-load-pct="0" data-active-appointments="0" data-max-patients="' + maxPatients + '">'
+                                                                      + '" data-load-pct="' + loadPct + '" data-active-appointments="' + activeAppointments + '" data-booked-appointments="' + bookedAppointments + '" data-max-patients="' + maxPatients + '">'
 
                                                                       + '<td><span class="fw-semibold">' + escapeHtmlForSchedule(schedule.doctorName)
                                                                       + '</span><div class="small text-purple"><i class="fa-solid ' + sourceIcon + ' me-1"></i>'
@@ -759,15 +1109,16 @@
                                                                       + '<td>' + escapeHtmlForSchedule(schedule.timeSlot) + '</td>'
 
                                                                       + '<td><div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">'
-                                                                      + activeAppointments + ' / ' + maxPatients + '</div></td>'
+                                                                      + bookedAppointments + ' / ' + maxPatients + '</div>'
+                                                                      + '<small class="text-muted d-block text-center mt-1">Đang chờ/khám: ' + activeAppointments + '</small></td>'
 
                                                                       + '<td class="schedule-load-cell">'
-                                                                      + '<div class="schedule-load-wrap" title="Bình thường">'
+                                                                      + '<div class="schedule-load-wrap" title="' + (loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')) + '">'
                                                                       + '<div class="progress schedule-load-progress">'
-                                                                      + '<div class="progress-bar bg-success" role="progressbar" style="width: ' + loadPct + '%;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>'
+                                                                      + '<div class="progress-bar ' + (loadPct >= 100 ? 'bg-danger' : (loadPct >= 80 ? 'bg-warning' : 'bg-success')) + '" role="progressbar" style="width: ' + (loadPct > 100 ? 100 : loadPct) + '%;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + loadPct + '"></div>'
                                                                       + '</div>'
-                                                                      + '<span class="badge schedule-load-percent text-bg-success">0%</span>'
-                                                                      + '<small class="text-muted schedule-load-state">Bình thường</small>'
+                                                                      + '<span class="badge schedule-load-percent ' + (loadPct >= 100 ? 'text-bg-danger' : (loadPct >= 80 ? 'text-bg-warning' : 'text-bg-success')) + '">' + loadPct + '%</span>'
+                                                                      + '<small class="text-muted schedule-load-state">' + (loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')) + '</small>'
                                                                       + '</div>'
                                                                       + '</td>'
 
@@ -803,33 +1154,99 @@
                                                               const startDate = document.getElementById('aiStartDate');
                                                               const endDate = document.getElementById('aiEndDate');
                                                               const form = document.getElementById('aiScheduleForm');
-                                                              const templateSelect = document.getElementById('aiScheduleTemplate');
+                                                              const startTimeInput = document.getElementById('aiStartTime');
+                                                              const endTimeInput = document.getElementById('aiEndTime');
+                                                              const slotDurationInput = document.getElementById('aiSlotDuration');
+                                                              const departmentInput = document.getElementById('aiDepartmentInput');
+                                                              const addDepartmentBtn = document.getElementById('aiAddDepartmentBtn');
+                                                              const departmentList = document.getElementById('aiDepartmentList');
+                                                              
                                                               if (startDate && !startDate.value) {
                                                                   startDate.value = getIsoDateOffset(1);
                                                               }
                                                               if (endDate && !endDate.value) {
                                                                   endDate.value = getIsoDateOffset(7);
                                                               }
-                                                              const shiftTemplates = document.querySelector('textarea[name="shiftTemplates"]');
-                                                              [startDate, endDate, document.getElementById('aiDoctorsPerShift'), ...document.querySelectorAll('input[name="selectedWeekdays"]')].forEach(element => {
-                                                                  if (element) {
-                                                                      element.addEventListener('input', updateAiMaxSchedules);
-                                                                      element.addEventListener('change', updateAiMaxSchedules);
-                                                                  }
-                                                              });
-                                                              if (templateSelect && shiftTemplates) {
-                                                                  templateSelect.addEventListener('change', function () {
-                                                                      shiftTemplates.value = (scheduleTemplates[this.value] || scheduleTemplates.weekday).join('\n');
-                                                                      updateAiMaxSchedules();
+                                                              
+                                                              // Handle department badge removal
+                                                              if (departmentList) {
+                                                                  departmentList.addEventListener('click', function(e) {
+                                                                      if (e.target.classList.contains('badge')) {
+                                                                          e.target.remove();
+                                                                          updateTemplatePreview();
+                                                                      }
                                                                   });
                                                               }
-                                                              updateAiMaxSchedules();
+                                                              
+                                                              // Handle add department button
+                                                              if (addDepartmentBtn && departmentInput && departmentList) {
+                                                                  addDepartmentBtn.addEventListener('click', function() {
+                                                                      const dept = departmentInput.value.trim();
+                                                                      if (!dept) return;
+                                                                      
+                                                                      const normalizedDept = Object.keys(departmentMapping).find(key => 
+                                                                          key.toLowerCase() === dept.toLowerCase()
+                                                                      ) || dept;
+                                                                      
+                                                                      const exists = Array.from(departmentList.querySelectorAll('.badge'))
+                                                                          .some(badge => badge.getAttribute('data-dept') === normalizedDept);
+                                                                      
+                                                                      if (!exists) {
+                                                                          const badge = document.createElement('span');
+                                                                          badge.className = 'badge bg-info text-dark cursor-pointer';
+                                                                          badge.setAttribute('data-dept', normalizedDept);
+                                                                          badge.textContent = normalizedDept + ' ✕';
+                                                                          departmentList.appendChild(badge);
+                                                                          departmentInput.value = '';
+                                                                          updateTemplatePreview();
+                                                                      }
+                                                                  });
+                                                                  
+                                                                  departmentInput.addEventListener('keypress', function(e) {
+                                                                      if (e.key === 'Enter') {
+                                                                          e.preventDefault();
+                                                                          addDepartmentBtn.click();
+                                                                      }
+                                                                  });
+                                                              }
+                                                              
+                                                              // Setup update triggers
+                                                              [startDate, endDate, document.getElementById('aiDoctorsPerShift'), 
+                                                               startTimeInput, endTimeInput, slotDurationInput,
+                                                               ...document.querySelectorAll('input[name="selectedWeekdays"]')].forEach(element => {
+                                                                  if (element) {
+                                                                      element.addEventListener('input', function() {
+                                                                          if (element === startTimeInput || element === endTimeInput || element === slotDurationInput) {
+                                                                              updateTemplatePreview();
+                                                                          } else {
+                                                                              updateAiMaxSchedules();
+                                                                          }
+                                                                      });
+                                                                      element.addEventListener('change', function() {
+                                                                          if (element === startTimeInput || element === endTimeInput || element === slotDurationInput) {
+                                                                              updateTemplatePreview();
+                                                                          } else {
+                                                                              updateAiMaxSchedules();
+                                                                          }
+                                                                      });
+                                                                  }
+                                                              });
+                                                              
+                                                              updateTemplatePreview();
                                                               if (!form) {
                                                                   return;
                                                               }
 
                                                               form.addEventListener('submit', async function (event) {
                                                                   event.preventDefault();
+                                                                  
+                                                                  // Update hidden fields from custom design inputs
+                                                                  if (startTimeInput && endTimeInput && slotDurationInput) {
+                                                                      document.querySelector('input[name="startTime"]').value = startTimeInput.value || '07:00';
+                                                                      document.querySelector('input[name="endTime"]').value = endTimeInput.value || '19:00';
+                                                                      document.querySelector('input[name="slotMinutes"]').value = slotDurationInput.value || '60';
+                                                                  }
+                                                                  
                                                                   const formData = new FormData(form);
                                                                   const params = new URLSearchParams();
                                                                   params.set('action', 'aiCreateSchedules');
@@ -940,8 +1357,43 @@
                 
                 // Tải danh sách bệnh nhân
                 fetch('${pageContext.request.contextPath}/admin?action=scheduleAppointments&scheduleId=' + scheduleId)
-                    .then(response => {
+                    .then(async response => {
+                        const ct = response.headers.get('content-type') || '';
+                        if (response.status === 401) {
+                            // Session expired for AJAX request - try to show message then redirect
+                            if (ct.toLowerCase().indexOf('application/json') !== -1) {
+                                const err = await response.json().catch(() => null);
+                                const msg = (err && err.message) ? err.message : 'Phiên làm việc đã hết, vui lòng đăng nhập lại.';
+                                const tbody = document.getElementById('appointmentsTableBody');
+                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
+                            } else {
+                                const tbody = document.getElementById('appointmentsTableBody');
+                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến đăng nhập...</td></tr>';
+                            }
+                            setTimeout(() => { window.location.href = '${pageContext.request.contextPath}/login.jsp'; }, 1200);
+                            return Promise.reject(new Error('HTTP 401'));
+                        }
                         if (!response.ok) throw new Error('HTTP ' + response.status);
+                        if (ct.toLowerCase().indexOf('application/json') === -1) {
+                            // Non-JSON response (likely HTML error or login page)
+                            const txt = await response.text();
+                            const snippet = txt.replace(/\s+/g, ' ').substring(0, 400);
+                            const tbody = document.getElementById('appointmentsTableBody');
+                            // Detect common signs of login page or server error
+                            const low = snippet.toLowerCase();
+                            const looksLikeLogin = low.indexOf('đăng nhập') !== -1 || low.indexOf('login') !== -1 || low.indexOf('j_username') !== -1 || low.indexOf('<form') !== -1;
+                            if (looksLikeLogin) {
+                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến trang đăng nhập...</td></tr>';
+                                // Redirect to login after short delay
+                                setTimeout(() => {
+                                    window.location.href = '${pageContext.request.contextPath}/login.jsp';
+                                }, 1200);
+                                // Stop further processing
+                                return Promise.reject(new Error('Session expired - redirecting to login'));
+                            }
+                            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>Server trả về nội dung không hợp lệ: ' + escapeHtmlForSchedule(snippet) + '</td></tr>';
+                            return Promise.reject(new Error('Server returned non-JSON response'));
+                        }
                         return response.json();
                     })
                     .then(data => {
@@ -950,7 +1402,7 @@
                             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Chưa có bệnh nhân nào đặt lịch</td></tr>';
                             return;
                         }
-                        
+
                         tbody.innerHTML = data.items.map(item => {
                             const statusBadge = getStatusBadge(item.status);
                             return '<tr>'
@@ -962,7 +1414,8 @@
                     })
                     .catch(error => {
                         const tbody = document.getElementById('appointmentsTableBody');
-                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>Lỗi: ' + error.message + '</td></tr>';
+                        const msg = error && error.message ? error.message : 'Lỗi khi tải dữ liệu';
+                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
                     });
             }, false);
             

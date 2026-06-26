@@ -1,6 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
+<c:set var="currentAction" value="exception" />
+
 <%--
     Trang Điều phối khẩn cấp:
     - Xử lý ca khám bị kẹt/ngoại lệ vận hành
@@ -14,18 +16,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Điều phối khẩn cấp và xử lý sự cố - S-COMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 
     <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h3 class="mb-1">Điều phối khẩn cấp và xử lý sự cố</h3>
-            <p class="text-secondary mb-0">Quản lý hàng đợi kẹt và tái phân bác sĩ thủ công</p>
+    <div class="admin-layout row g-3">
+        <div class="col-lg-3 admin-sidebar-col">
+            <%@ include file="/admin/fragments/sidebar.jspf" %>
         </div>
-        <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/admin">Dashboard</a>
-    </div>
+        <div class="col-lg-9 admin-content-col">
+            <div class="admin-page-header mb-3">
+                <h3 class="mb-1">Điều phối khẩn cấp và xử lý sự cố</h3>
+                <p class="text-secondary mb-0">Quản lý hàng đợi kẹt và tái phân bác sĩ thủ công</p>
+            </div>
 
     <c:if test="${not empty sessionScope.successMessage}">
         <div class="alert alert-success">${sessionScope.successMessage}</div>
@@ -58,7 +63,25 @@
                         <td>${q.patientName}</td>
                         <td>${q.currentDoctorName}</td>
                         <td>${q.department}</td>
-                        <td><span class="badge text-bg-warning">${q.appointmentStatus}</span></td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${q.appointmentStatus eq 'Waiting'}">
+                                    <span class="badge text-bg-warning">Chờ đợi</span>
+                                </c:when>
+                                <c:when test="${q.appointmentStatus eq 'In_Progress'}">
+                                    <span class="badge text-bg-info">Đang khám</span>
+                                </c:when>
+                                <c:when test="${q.appointmentStatus eq 'No_Show'}">
+                                    <span class="badge text-bg-secondary">Không đến</span>
+                                </c:when>
+                                <c:when test="${q.appointmentStatus eq 'Completed'}">
+                                    <span class="badge text-bg-success">Hoàn tất</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span class="badge text-bg-secondary">${q.appointmentStatus}</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
                         <td>${q.appointmentTime}</td>
                         <td>
                             <a class="btn btn-sm btn-outline-primary"
@@ -98,7 +121,10 @@
             </div>
         </div>
     </c:if>
+        </div>
+    </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 

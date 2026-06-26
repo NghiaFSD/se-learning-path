@@ -569,6 +569,12 @@ public final class GeminiSchedulingService {
         if (lower.contains("nội tiết") || lower.contains("tiểu đường") || lower.contains("endocrin")) {
             return "Endocrinology";
         }
+        if (lower.contains("tim mạch") || lower.contains("cardio")) {
+            return "Cardiology";
+        }
+        if (lower.contains("thận") || lower.contains("nephro")) {
+            return "Nephrology";
+        }
         if (lower.contains("tổng quát") || lower.contains("general")) {
             return "General";
         }

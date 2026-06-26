@@ -1,4 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+<c:set var="currentAction" value="exception" />
 
 <%--
     Trang Health Records (ngoại lệ vận hành):
@@ -12,25 +15,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Điều phối khẩn cấp và xử lý sự cố - S-COMS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="${pageContext.request.contextPath}/css/admin-ui.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 <div class="container py-4 admin-page-shell">
-    <div class="admin-page-header d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="badge text-bg-danger"><i class="bi bi-exclamation-triangle me-1"></i> Ngoại lệ vận hành</span>
-                <span class="badge text-bg-light border text-secondary">BR-08</span>
+    <div class="admin-layout row g-3">
+        <div class="col-lg-3 admin-sidebar-col">
+            <%@ include file="/admin/fragments/sidebar.jspf" %>
+        </div>
+        <div class="col-lg-9 admin-content-col">
+            <div class="admin-page-header d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge text-bg-danger"><i class="bi bi-exclamation-triangle me-1"></i> Ngoại lệ vận hành</span>
+                        <span class="badge text-bg-light border text-secondary">BR-08</span>
+                    </div>
+                    <h3 class="mb-1">Điều phối khẩn cấp và xử lý sự cố</h3>
+                    <p class="text-secondary mb-0">Chỉ dùng khi có xung đột lịch trực, bác sĩ nghỉ đột xuất hoặc dữ liệu xét nghiệm cần can thiệp.</p>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=exception">Mở điều phối</a>
+                </div>
             </div>
-            <h3 class="mb-1">Điều phối khẩn cấp và xử lý sự cố</h3>
-            <p class="text-secondary mb-0">Chỉ dùng khi có xung đột lịch trực, bác sĩ nghỉ đột xuất hoặc dữ liệu xét nghiệm cần can thiệp.</p>
-        </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <a class="btn btn-outline-secondary" href="${pageContext.request.contextPath}/admin">Tổng quan</a>
-            <a class="btn btn-primary" href="${pageContext.request.contextPath}/admin?action=exception">Mở điều phối</a>
-        </div>
-    </div>
 
     <div class="alert alert-warning d-flex gap-3 align-items-start mb-4">
         <i class="bi bi-info-circle fs-4"></i>
@@ -94,6 +102,8 @@
                     </a>
                 </div>
             </div>
+        </div>
+    </div>
         </div>
     </div>
 </div>

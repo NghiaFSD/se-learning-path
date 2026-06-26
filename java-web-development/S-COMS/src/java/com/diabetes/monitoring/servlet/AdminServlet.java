@@ -45,7 +45,18 @@ public class AdminServlet extends HttpServlet {
         User currentUser = (User) session.getAttribute("currentUser");
 
         if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            String xhr = request.getHeader("X-Requested-With");
+            String accept = request.getHeader("Accept");
+            boolean wantsJson = (xhr != null && "XMLHttpRequest".equalsIgnoreCase(xhr)) || (accept != null && accept.toLowerCase().contains("application/json"));
+            if (wantsJson) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                try (PrintWriter out = response.getWriter()) {
+                    out.print("{\"error\":\"session_expired\",\"message\":\"Phiên làm việc đã hết, vui lòng đăng nhập lại.\"}");
+                }
+            } else {
+                response.sendRedirect(request.getContextPath() + "/login.jsp");
+            }
             return;
         }
 
@@ -53,6 +64,11 @@ public class AdminServlet extends HttpServlet {
         String action = request.getParameter("action");
         if (action == null || action.isBlank()) {
             loadDashboard(request, response);
+            return;
+        }
+
+        if ("getTransferCandidates".equals(action)) {
+            getTransferCandidates(request, response);
             return;
         }
 
@@ -111,6 +127,11 @@ public class AdminServlet extends HttpServlet {
             return;
         }
 
+        if ("getAccountProfile".equals(action)) {
+            loadAccountProfile(request, response);
+            return;
+        }
+
         switch (action) {
             case "listUsers":
                 loadAccounts(request, response);
@@ -160,17 +181,27 @@ public class AdminServlet extends HttpServlet {
         }
 
         switch (action) {
+            case "getTransferCandidates":
+                getTransferCandidates(request, response);
+                return;
             case "createAccount":
                 createAccount(request, response);
                 break;
             case "updateAccountRole":
-                updateAccountRole(request, response);
+                request.getSession().setAttribute("errorMessage", "Tính năng thay đổi vai trò đã bị vô hiệu hóa");
+                response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
                 break;
             case "lockAccount":
                 updateAccountStatus(request, response, "locked");
                 break;
             case "reactivateAccount":
                 updateAccountStatus(request, response, "active");
+                break;
+            case "deleteAccount":
+                deleteAccount(request, response);
+                break;
+            case "updateAccountProfile":
+                updateAccountProfile(request, response);
                 break;
             case "createService":
                 createService(request, response);
@@ -199,6 +230,9 @@ public class AdminServlet extends HttpServlet {
             case "updateSchedule":
                 updateSchedule(request, response);
                 break;
+            case "transferSchedule":
+                transferSchedule(request, response);
+                break;
             case "deleteSchedule":
                 deleteSchedule(request, response);
                 break;
@@ -215,6 +249,46 @@ public class AdminServlet extends HttpServlet {
         }
     }
 
+    // Trả về danh sách bác sĩ khả dụng để nhận ca (JSON) cho một scheduleId.
+    private void getTransferCandidates(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
+        response.setContentType("application/json;charset=UTF-8");
+        try (PrintWriter out = response.getWriter()) {
+            if (scheduleId <= 0) {
+                out.print("{\"currentDoctorId\":null,\"items\":[]}");
+                return;
+            }
+            Map<String, Object> schedule = adminDAO.getDoctorScheduleById(scheduleId);
+            if (schedule == null) {
+                out.print("{\"currentDoctorId\":null,\"items\":[]}");
+                return;
+            }
+            Integer currentDoctorId = schedule.get("doctorId") instanceof Number ? ((Number) schedule.get("doctorId")).intValue() : null;
+            String department = String.valueOf(schedule.get("department"));
+            List<Map<String, Object>> candidates = adminDAO.getAvailableDoctorsForEmergency(department, currentDoctorId);
+            // Fallback to all active doctors if none in same dept
+            if (candidates == null || candidates.isEmpty()) {
+                candidates = adminDAO.getAllActiveDoctorsForEmergency(currentDoctorId);
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            sb.append("\"currentDoctorId\":"); sb.append(currentDoctorId == null ? "null" : currentDoctorId);
+            sb.append(",\"items\":[");
+            boolean first = true;
+            for (Map<String, Object> d : candidates) {
+                if (!first) sb.append(',');
+                first = false;
+                sb.append('{');
+                sb.append("\"doctorId\":").append(d.get("doctorId")).append(',');
+                sb.append("\"fullName\":\"").append(escapeJson(String.valueOf(d.get("fullName")))).append('\"').append(',');
+                sb.append("\"department\":\"").append(escapeJson(String.valueOf(d.get("department")))).append('\"');
+                sb.append('}');
+            }
+            sb.append("]}");
+            out.print(sb.toString());
+        }
+    }
+
     // =========================
     // PHÂN KHU DASHBOARD ADMIN
     // =========================
@@ -222,6 +296,7 @@ public class AdminServlet extends HttpServlet {
     // Nạp dashboard tổng quan: KPI, queue, lịch trực hôm nay, dữ liệu biểu đồ.
     private void loadDashboard(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         adminDAO.normalizeFutureCompletedAppointments();
+        adminDAO.markLateWaitingAppointmentsAsNoShow();
         adminDAO.autoTransitionAppointmentStatuses(); // [DEMO] Auto-transition appointment statuses
 
         int totalAccounts = adminDAO.getCountTotalAccounts();
@@ -269,23 +344,31 @@ public class AdminServlet extends HttpServlet {
 
     // API JSON dữ liệu biểu đồ dashboard theo granularity.
     private void loadDashboardChartData(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String granularity = request.getParameter("granularity");
-        if (granularity == null || granularity.isBlank()) {
-            granularity = "month";
-        }
-
-        List<Map<String, Object>> revenueSeries = adminDAO.getDashboardRevenueSeries(granularity);
-        List<Map<String, Object>> visitSeries = adminDAO.getDashboardVisitSeries(granularity);
-
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"granularity\":\"");
-            out.print(escapeJson(granularity.toLowerCase()));
-            out.print("\",\"revenue\":");
-            out.print(toJsonSeries(revenueSeries));
-            out.print(",\"visits\":");
-            out.print(toJsonSeries(visitSeries));
-            out.print("}");
+        try {
+            String granularity = request.getParameter("granularity");
+            if (granularity == null || granularity.isBlank()) {
+                granularity = "month";
+            }
+
+            List<Map<String, Object>> revenueSeries = adminDAO.getDashboardRevenueSeries(granularity);
+            List<Map<String, Object>> visitSeries = adminDAO.getDashboardVisitSeries(granularity);
+
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"granularity\":\"");
+                out.print(escapeJson(granularity.toLowerCase()));
+                out.print("\",\"revenue\":");
+                out.print(toJsonSeries(revenueSeries));
+                out.print(",\"visits\":");
+                out.print(toJsonSeries(visitSeries));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadDashboardChartData", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải dữ liệu biểu đồ.\"}" );
+            }
         }
     }
 
@@ -295,24 +378,31 @@ public class AdminServlet extends HttpServlet {
 
     // API chi tiết báo cáo theo kỳ (để drill-down từ trang report).
     private void loadReportDetailByPeriod(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String period = request.getParameter("period");
-        if (period == null || period.isBlank()) {
-            response.setContentType("application/json;charset=UTF-8");
-            try (PrintWriter out = response.getWriter()) {
-                out.print("{\"invoices\":[],\"appointments\":[]}");
-            }
-            return;
-        }
-
-        Map<String, Object> result = adminDAO.getReportDetailByPeriod(period);
-
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"invoices\":");
-            out.print(toJsonInvoices((List<Map<String, Object>>) result.get("invoices")));
-            out.print(",\"appointments\":");
-            out.print(toJsonAppointments((List<Map<String, Object>>) result.get("appointments")));
-            out.print("}");
+        try {
+            String period = request.getParameter("period");
+            if (period == null || period.isBlank()) {
+                try (PrintWriter out = response.getWriter()) {
+                    out.print("{\"invoices\":[],\"appointments\":[]}");
+                }
+                return;
+            }
+
+            Map<String, Object> result = adminDAO.getReportDetailByPeriod(period);
+
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"invoices\":");
+                out.print(toJsonInvoices((List<Map<String, Object>>) result.get("invoices")));
+                out.print(",\"appointments\":");
+                out.print(toJsonAppointments((List<Map<String, Object>>) result.get("appointments")));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadReportDetailByPeriod", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải chi tiết báo cáo.\"}" );
+            }
         }
     }
 
@@ -322,120 +412,197 @@ public class AdminServlet extends HttpServlet {
 
     // API lấy danh sách dịch vụ chi tiết của một hóa đơn.
     private void loadInvoiceItems(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String invoiceId = request.getParameter("invoiceId");
-        List<Map<String, Object>> items = adminDAO.getInvoiceItemsByInvoiceId(invoiceId);
-
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"invoiceId\":\"");
-            out.print(escapeJson(invoiceId == null ? "" : invoiceId));
-            out.print("\",\"items\":");
-            out.print(toJsonInvoiceItems(items));
-            out.print("}");
+        try {
+            String invoiceId = request.getParameter("invoiceId");
+            List<Map<String, Object>> items = adminDAO.getInvoiceItemsByInvoiceId(invoiceId);
+
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"invoiceId\":\"");
+                out.print(escapeJson(invoiceId == null ? "" : invoiceId));
+                out.print("\",\"items\":");
+                out.print(toJsonInvoiceItems(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadInvoiceItems", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải mét hóa đơn.\"}" );
+            }
         }
     }
 
     private void loadQuickAccountsData(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String filter = request.getParameter("filter");
-        String status = (filter == null || filter.isBlank() || "all".equalsIgnoreCase(filter)) ? null : filter;
-        List<Map<String, Object>> items = adminDAO.getStaffAccountsQuick(status, 50);
-
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"filter\":\"");
-            out.print(escapeJson(filter == null ? "all" : filter));
-            out.print("\",\"summary\":{");
-            out.print("\"totalAccounts\":");
-            out.print(adminDAO.getCountTotalAccounts());
-            out.print(",\"activeAccounts\":");
-            out.print(adminDAO.getCountActiveAccounts());
-            out.print(",\"lockedAccounts\":");
-            out.print(adminDAO.getCountLockedAccounts());
-            out.print("},\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            String filter = request.getParameter("filter");
+            String status = (filter == null || filter.isBlank() || "all".equalsIgnoreCase(filter)) ? null : filter;
+            List<Map<String, Object>> items = adminDAO.getStaffAccountsQuick(status, 50);
+
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"filter\":\"");
+                out.print(escapeJson(filter == null ? "all" : filter));
+                out.print("\",\"summary\":{");
+                out.print("\"totalAccounts\":");
+                out.print(adminDAO.getCountTotalAccounts());
+                out.print(",\"activeAccounts\":");
+                out.print(adminDAO.getCountActiveAccounts());
+                out.print(",\"lockedAccounts\":");
+                out.print(adminDAO.getCountLockedAccounts());
+                out.print("},\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadQuickAccountsData", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải dữ liệu tài khoản.\"}"  );
+            }
         }
     }
 
     private void loadQuickRevenueData(HttpServletResponse response) throws IOException {
-        List<Map<String, Object>> items = adminDAO.getRecentPaidInvoicesToday(10);
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            List<Map<String, Object>> items = adminDAO.getRecentPaidInvoicesToday(10);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadQuickRevenueData", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải dữ liệu doanh thu.\"}" );
+            }
         }
     }
 
     private void loadQuickServicesData(HttpServletResponse response) throws IOException {
-        List<Map<String, Object>> items = adminDAO.getMedicalServices(null, null, null);
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"summary\":{\"activeServices\":");
-            out.print(adminDAO.getCountTotalServices());
-            out.print("},\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            List<Map<String, Object>> items = adminDAO.getMedicalServices(null, null, null);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"summary\":{\"activeServices\":");
+                out.print(adminDAO.getCountTotalServices());
+                out.print("},\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadQuickServicesData", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải dữ liệu dịch vụ.\"}" );
+            }
         }
     }
 
     private void loadQuickAppointmentsData(HttpServletResponse response) throws IOException {
-        List<Map<String, Object>> items = adminDAO.getCompletedAppointmentsTodayQuick(50);
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-        out.print("{\"items\":");
-        out.print(toJsonSimpleRows(items));
-        out.print("}");
+        try {
+            List<Map<String, Object>> items = adminDAO.getCompletedAppointmentsTodayQuick(50);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadQuickAppointmentsData", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải dữ liệu lượt khám.\"}" );
+            }
+        }
     }
-}
 
     private void loadDoctorQueueDetail(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        int doctorId = parseInt(request.getParameter("doctorId"), -1);
-        List<Map<String, Object>> items = doctorId > 0
-                ? adminDAO.getDoctorQueueDetailToday(doctorId)
-                : new ArrayList<>();
-
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            adminDAO.markLateWaitingAppointmentsAsNoShow();
+
+            int doctorId = parseInt(request.getParameter("doctorId"), -1);
+            List<Map<String, Object>> items = doctorId > 0
+                    ? adminDAO.getDoctorQueueDetailToday(doctorId)
+                    : new ArrayList<>();
+
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadDoctorQueueDetail", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải chi tiết hàng đợi.\"}" );
+            }
         }
     }
 
     private void loadTodayAppointments(HttpServletResponse response) throws IOException {
-        List<Map<String, Object>> items = adminDAO.getTodayAppointments();
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            adminDAO.markLateWaitingAppointmentsAsNoShow();
+            List<Map<String, Object>> items = adminDAO.getTodayAppointments();
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadTodayAppointments", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải lịch hẹn hôm nay.\"}" );
+            }
         }
     }
 
     private void loadTodayWaiting(HttpServletResponse response) throws IOException {
-        List<Map<String, Object>> items = adminDAO.getTodayWaitingDetails();
         response.setContentType("application/json;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            out.print("{\"items\":");
-            out.print(toJsonSimpleRows(items));
-            out.print("}");
+        try {
+            adminDAO.markLateWaitingAppointmentsAsNoShow();
+            List<Map<String, Object>> items = adminDAO.getTodayWaitingDetails();
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"items\":");
+                out.print(toJsonSimpleRows(items));
+                out.print("}");
+            }
+        } catch (Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            log("Error in loadTodayWaiting", ex);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"true\",\"message\":\"Không thể tải danh sách chờ.\"}" );
+            }
         }
     }
 
     private void loadScheduleAppointments(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
-        List<Map<String, Object>> items = scheduleId > 0
-                ? adminDAO.getAppointmentsBySchedule(scheduleId)
-                : new ArrayList<>();
-
         response.setContentType("application/json;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
+            List<Map<String, Object>> items = scheduleId > 0
+                    ? adminDAO.getAppointmentsBySchedule(scheduleId)
+                    : new ArrayList<>();
+
             out.print("{\"scheduleId\":");
             out.print(scheduleId);
             out.print(",\"items\":");
             out.print(toJsonSimpleRows(items));
             out.print("}");
+        } catch (Exception ex) {
+            // Ensure we always return JSON on error (avoid HTML/stacktrace pages)
+            log("Error in loadScheduleAppointments", ex);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try (PrintWriter out = response.getWriter()) {
+                out.print("{\"error\":\"");
+                out.print(escapeJson(ex.getMessage()));
+                out.print("\"}");
+            }
         }
     }
 
@@ -449,6 +616,9 @@ public class AdminServlet extends HttpServlet {
         String role = request.getParameter("role");
         String status = request.getParameter("status");
 
+        request.setAttribute("selectedSearch", search == null ? "" : search);
+        request.setAttribute("selectedRole", role == null ? "" : role);
+        request.setAttribute("selectedStatus", status == null ? "" : status);
         request.setAttribute("users", adminDAO.getAccounts(search, role, status));
         request.getRequestDispatcher("/admin/users.jsp").forward(request, response);
     }
@@ -459,13 +629,21 @@ public class AdminServlet extends HttpServlet {
         String password = request.getParameter("password");
         String role = request.getParameter("role");
 
+        String normalizedEmail = email == null ? "" : email.trim();
+
+        if (adminDAO.isAccountEmailExists(normalizedEmail)) {
+            request.getSession().setAttribute("errorMessage", "Email đã tồn tại, không thể tạo tài khoản trùng");
+            response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
+            return;
+        }
+
         if (!adminDAO.isAllowedRole(role)) {
             request.getSession().setAttribute("errorMessage", "Vai trò không hợp lệ theo FR-ADM-02");
             response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
             return;
         }
 
-        boolean created = adminDAO.createAccount(fullName, email, PasswordUtil.hashPassword(password), role, "active");
+        boolean created = adminDAO.createAccount(fullName, normalizedEmail, PasswordUtil.hashPassword(password), role, "active");
         request.getSession().setAttribute(created ? "successMessage" : "errorMessage",
                 created ? "Đã tạo tài khoản thành công" : "Không thể tạo tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
@@ -487,6 +665,71 @@ public class AdminServlet extends HttpServlet {
         request.getSession().setAttribute(ok ? "successMessage" : "errorMessage",
                 ok ? ("locked".equals(targetStatus) ? "Đã khóa tài khoản" : "Đã kích hoạt lại tài khoản")
                         : "Không thể cập nhật trạng thái tài khoản");
+        response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
+    }
+
+    private void deleteAccount(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        int accountId = parseInt(request.getParameter("accountId"), -1);
+        Map<String, Object> profile = accountId > 0
+                ? adminDAO.getAccountProfileForAdminEdit(accountId)
+                : new HashMap<>();
+
+        String role = String.valueOf(profile.getOrDefault("role", ""));
+        if ("Doctor".equals(role)) {
+            request.getSession().setAttribute("errorMessage", "Tài khoản bác sĩ chỉ được vô hiệu hóa, không được xóa");
+            response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
+            return;
+        }
+
+        boolean ok = accountId > 0 && adminDAO.deleteAccountForAdmin(accountId);
+        request.getSession().setAttribute(ok ? "successMessage" : "errorMessage",
+                ok ? "Đã xóa tài khoản" : "Không thể xóa tài khoản (có thể đang phát sinh dữ liệu liên quan)");
+        response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
+    }
+
+    private void loadAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        int accountId = parseInt(request.getParameter("accountId"), -1);
+        Map<String, Object> profile = accountId > 0
+                ? adminDAO.getAccountProfileForAdminEdit(accountId)
+                : new HashMap<>();
+
+        response.setContentType("application/json;charset=UTF-8");
+        try (PrintWriter out = response.getWriter()) {
+            if (profile.isEmpty()) {
+                out.print("{\"success\":false,\"message\":\"Không tìm thấy tài khoản\"}");
+                return;
+            }
+
+            out.print("{\"success\":true,\"item\":{");
+            out.print("\"accountId\":");
+            out.print(parseInt(String.valueOf(profile.get("accountId")), 0));
+            out.print(",\"fullName\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("fullName", ""))));
+            out.print("\",\"email\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("email", ""))));
+            out.print("\",\"role\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("role", ""))));
+            out.print("\",\"phone\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("phone", ""))));
+            out.print("\",\"address\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("address", ""))));
+            out.print("\",\"department\":\"");
+            out.print(escapeJson(String.valueOf(profile.getOrDefault("department", ""))));
+            out.print("\"}}");
+        }
+    }
+
+    private void updateAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        int accountId = parseInt(request.getParameter("accountId"), -1);
+        String fullName = request.getParameter("fullName");
+        String email = request.getParameter("email");
+        String phone = request.getParameter("phone");
+        String address = request.getParameter("address");
+        String department = request.getParameter("department");
+
+        boolean ok = accountId > 0 && adminDAO.updateAccountProfileByRole(accountId, fullName, email, phone, address, department);
+        request.getSession().setAttribute(ok ? "successMessage" : "errorMessage",
+                ok ? "Đã cập nhật hồ sơ tài khoản" : "Không thể cập nhật hồ sơ tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
 
@@ -585,11 +828,13 @@ public class AdminServlet extends HttpServlet {
 
     // Nạp màn hình schedule-management và đồng bộ effectiveStatus.
     private void loadSchedules(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        adminDAO.markLateWaitingAppointmentsAsNoShow();
         adminDAO.refreshDoctorScheduleStatusFromAppointments();
 
         String department = request.getParameter("department");
         String doctorName = request.getParameter("doctorName");
         Date workDate = nullableDate(request.getParameter("workDate"));
+        int transferScheduleId = parseInt(request.getParameter("transferScheduleId"), -1);
 
         request.setAttribute("doctors", adminDAO.getDoctorsForSchedule());
         request.setAttribute("departments", adminDAO.getScheduleDepartments());
@@ -597,9 +842,35 @@ public class AdminServlet extends HttpServlet {
         request.setAttribute("doctorNameFilter", doctorName == null ? "" : doctorName);
         request.setAttribute("selectedWorkDate", request.getParameter("workDate"));
 
+        Map<String, Object> selectedSchedule = null;
+        List<Map<String, Object>> transferCandidates = new ArrayList<>();
+        if (transferScheduleId > 0) {
+            selectedSchedule = adminDAO.getDoctorScheduleById(transferScheduleId);
+            if (selectedSchedule != null) {
+                Integer currentDoctorId = selectedSchedule.get("doctorId") instanceof Number
+                        ? ((Number) selectedSchedule.get("doctorId")).intValue()
+                        : null;
+                String sourceDepartment = String.valueOf(selectedSchedule.get("department"));
+                transferCandidates = adminDAO.getAvailableDoctorsForEmergency(sourceDepartment, currentDoctorId);
+                if (transferCandidates.isEmpty()) {
+                    transferCandidates = adminDAO.getAllActiveDoctorsForEmergency(currentDoctorId);
+                }
+            }
+        }
+        request.setAttribute("selectedSchedule", selectedSchedule);
+        request.setAttribute("transferCandidates", transferCandidates);
+
         List<Map<String, Object>> rawSchedules = adminDAO.getDoctorSchedules(department, doctorName, workDate);
         for (Map<String, Object> row : rawSchedules) {
-            row.put("activeAppointments", row.get("activeCount"));
+            if (!row.containsKey("activeAppointments")) {
+                row.put("activeAppointments", row.get("activeCount"));
+            }
+            if (!row.containsKey("bookedAppointments")) {
+                row.put("bookedAppointments", row.get("bookedCount"));
+            }
+            if (!row.containsKey("bookedCount")) {
+                row.put("bookedCount", row.get("bookedAppointments"));
+            }
             boolean isFull = Boolean.TRUE.equals(row.get("isFull"));
             String configured = String.valueOf(row.get("status"));
             if ("Expired".equalsIgnoreCase(configured) || "Cancelled".equalsIgnoreCase(configured)) {
@@ -660,17 +931,17 @@ public class AdminServlet extends HttpServlet {
         String department = request.getParameter("department");
         List<Map<String, String>> shiftsPerDay = parseShiftTemplates(request.getParameter("shiftTemplates"));
         List<Integer> selectedWeekdays = parseSelectedWeekdays(request.getParameterValues("selectedWeekdays"));
+        List<Date> targetDates = buildSelectedTargetDates(startDate, endDate, selectedWeekdays);
 
         if (shiftsPerDay.isEmpty()) {
             shiftsPerDay = buildDefaultShiftTemplates(startTime, endTime, slotMinutes, department);
         }
         doctorsPerShift = Math.min(4, Math.max(1, doctorsPerShift));
+        int expectedScheduleCount = targetDates.size() * shiftsPerDay.size() * doctorsPerShift;
         shiftsPerDay = expandShiftsForDoctorsPerSlot(shiftsPerDay, doctorsPerShift);
         List<Map<String, Object>> created = new ArrayList<>();
         String message;
         boolean success = false;
-
-        List<Date> targetDates = buildSelectedTargetDates(startDate, endDate, selectedWeekdays);
         if (startDate == null || endDate == null || startDate.after(endDate)) {
             message = "Khoảng ngày lập lịch không hợp lệ.";
         } else if (selectedWeekdays.isEmpty()) {
@@ -684,7 +955,7 @@ public class AdminServlet extends HttpServlet {
         } else if (maxPatients > 50) {
             message = "Số bệnh nhân tối đa không được vượt quá 50 để đảm bảo chất lượng khám.";
         } else {
-            maxSchedules = targetDates.size() * shiftsPerDay.size();
+            maxSchedules = expectedScheduleCount;
             List<Map<String, Object>> doctors = adminDAO.getDoctorsForAiScheduling(startDate, endDate);
             // DEBUG: In ra dữ liệu doctors được gửi cho AI để kiểm định
             LOGGER.log(Level.INFO, "=== DEBUG AI SCHEDULING INPUT ===");
@@ -812,6 +1083,68 @@ public class AdminServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
         }
 
+    // Chuyển giao ca trực cho bác sĩ khác khi bác sĩ hiện tại bận hoặc có vấn đề sức khỏe.
+    private void transferSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
+        int targetDoctorId = parseInt(request.getParameter("targetDoctorId"), -1);
+        boolean ok = scheduleId > 0 && targetDoctorId > 0
+            && adminDAO.transferDoctorSchedule(scheduleId, targetDoctorId);
+        String daoMessage = adminDAO.consumeScheduleValidationMessage();
+
+        // If request is AJAX, return JSON with detailed message so frontend can show it inline.
+        String xrw = request.getHeader("X-Requested-With");
+        boolean isAjax = xrw != null && "XMLHttpRequest".equalsIgnoreCase(xrw)
+            || (request.getHeader("Accept") != null && request.getHeader("Accept").contains("application/json"));
+
+        if (isAjax) {
+            response.setContentType("application/json;charset=UTF-8");
+            try (PrintWriter out = response.getWriter()) {
+            out.print('{');
+            out.print("\"success\":");
+            out.print(ok);
+            out.print(',');
+            out.print("\"message\":\"");
+            String msg = ok ? "Đã chuyển giao ca trực" : (daoMessage == null || daoMessage.isBlank() ? "Không thể chuyển giao ca trực" : daoMessage);
+            out.print(escapeJson(msg));
+            out.print('\"');
+            if (ok) {
+                // include new doctor info for client-side update
+                    Map<String, Object> profile = adminDAO.getAccountProfileForAdminEdit(targetDoctorId);
+                    String fullName = profile == null ? "" : String.valueOf(profile.getOrDefault("fullName", ""));
+                    out.print(',');
+                    out.print("\"targetDoctorId\":"); out.print(targetDoctorId);
+                    out.print(',');
+                    out.print("\"targetDoctorName\":\""); out.print(escapeJson(fullName)); out.print('\"');
+                    // include updated schedule snapshot for client to refresh row
+                    Map<String, Object> schedule = adminDAO.getDoctorScheduleById(scheduleId);
+                    if (schedule != null) {
+                        Object bookedObj = schedule.getOrDefault("bookedAppointments", schedule.getOrDefault("bookedCount", 0));
+                        Object activeObj = schedule.getOrDefault("activeAppointments", schedule.getOrDefault("activeCount", 0));
+                        Object maxObj = schedule.getOrDefault("maxPatients", schedule.getOrDefault("max_patients", 1));
+                        int booked = parseInt(String.valueOf(bookedObj), 0);
+                        int active = parseInt(String.valueOf(activeObj), 0);
+                        int max = parseInt(String.valueOf(maxObj), 1);
+                        double loadPct = max > 0 ? Math.min(100.0, (booked * 100.0 / max)) : 0.0;
+                        out.print(','); out.print("\"bookedAppointments\":"); out.print(booked);
+                        out.print(','); out.print("\"activeAppointments\":"); out.print(active);
+                        out.print(','); out.print("\"maxPatients\":"); out.print(max);
+                        out.print(','); out.print("\"loadPct\":"); out.print(String.format(java.util.Locale.ROOT, "%.0f", loadPct));
+                        out.print(','); out.print("\"timeSlot\":\""); out.print(escapeJson(String.valueOf(schedule.getOrDefault("timeSlot", "")))); out.print('\"');
+                        out.print(','); out.print("\"workDate\":\""); out.print(escapeJson(String.valueOf(schedule.getOrDefault("workDate", "")))); out.print('\"');
+                    }
+            }
+            out.print('}');
+            }
+            return;
+        }
+
+        // Non-AJAX fallback: set session message and redirect as before
+        request.getSession().setAttribute(ok ? "successMessage" : "errorMessage",
+            ok ? "Đã chuyển giao ca trực"
+                : (daoMessage == null || daoMessage.isBlank() ? "Không thể chuyển giao ca trực" : daoMessage));
+        response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
+    }
+
         // Điều phối khẩn cấp khi bác sĩ quá tải/vắng đột xuất.
         private void emergencyReassign(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int appointmentId = parseInt(request.getParameter("appointmentId"), -1);
@@ -839,6 +1172,8 @@ public class AdminServlet extends HttpServlet {
 
     // Nạp trang báo cáo doanh thu/lượt khám với bộ lọc thời gian.
     private void loadReports(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        adminDAO.markLateWaitingAppointmentsAsNoShow();
+
         String granularity = request.getParameter("granularity");
         if (granularity == null || granularity.isBlank()) {
             granularity = "month";
@@ -906,6 +1241,8 @@ public class AdminServlet extends HttpServlet {
 
     // Nạp trang xử lý ngoại lệ và danh sách bác sĩ có thể điều phối.
     private void loadExceptionRouting(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        adminDAO.markLateWaitingAppointmentsAsNoShow();
+
         Integer doctorId = nullableInt(request.getParameter("doctorId"));
         List<Map<String, Object>> queueItems = adminDAO.getExceptionQueue(doctorId);
 
@@ -916,8 +1253,8 @@ public class AdminServlet extends HttpServlet {
                 Integer aid = nullableInt(String.valueOf(item.get("appointmentId")));
                 if (aid != null && aid.equals(selectedAppointmentId)) {
                     Integer currentDoctorId = nullableInt(String.valueOf(item.get("currentDoctorId")));
-                    // Lấy TẤT CẢ bác sĩ hoạt động để có thể chọn (không lọc theo khoa)
-                    candidateDoctors = adminDAO.getAllActiveDoctorsForEmergency(currentDoctorId);
+                    // Chỉ lấy bác sĩ có lịch hợp lệ cho ngày của appointment đang xử lý.
+                    candidateDoctors = adminDAO.getEmergencyCandidateDoctorsForAppointment(selectedAppointmentId, currentDoctorId);
                     request.setAttribute("selectedQueueItem", item);
                     break;
                 }
@@ -1103,7 +1440,7 @@ public class AdminServlet extends HttpServlet {
     private List<Map<String, String>> buildDefaultShiftTemplates(String rawStartTime, String rawEndTime, int slotMinutes, String department) {
         List<Map<String, String>> shifts = new ArrayList<>();
         String resolvedDepartment = normalizeScheduleDepartment(
-                (department == null || department.isBlank()) ? "Nội tiết - Tiểu đường" : department);
+                (department == null || department.isBlank()) ? "Endocrinology" : department);
         for (String timeSlot : buildScheduleTimeSlots(rawStartTime, rawEndTime, slotMinutes)) {
             Map<String, String> shift = new HashMap<>();
             shift.put("timeSlot", timeSlot);
@@ -1123,6 +1460,19 @@ public class AdminServlet extends HttpServlet {
                 || department.equalsIgnoreCase("Nội tiết - Tiểu đường")
                 || department.equalsIgnoreCase("Endocrinology")) {
             return "Endocrinology";
+        }
+        if (department.equalsIgnoreCase("Tim mạch") 
+                || department.equalsIgnoreCase("Cardiology")) {
+            return "Cardiology";
+        }
+        if (department.equalsIgnoreCase("Thận học") 
+                || department.equalsIgnoreCase("Thận kinh")
+                || department.equalsIgnoreCase("Nephrology")) {
+            return "Nephrology";
+        }
+        if (department.equalsIgnoreCase("Tổng quát") 
+                || department.equalsIgnoreCase("General")) {
+            return "General";
         }
         return department;
     }

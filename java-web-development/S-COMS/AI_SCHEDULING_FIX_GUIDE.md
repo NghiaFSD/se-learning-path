@@ -264,6 +264,44 @@ ant clean build
 
 ---
 
+## 🧹 Ghi Chú Dọn Dẹp File Seed
+
+Hiện tại thư mục `database` chỉ giữ file seed chính:
+
+- `seed_realtime_today_linked_samples_mssql.sql`
+
+File này là file nên dùng khi muốn sinh dữ liệu mẫu theo thời gian thực cho ngày hiện tại, và nó sẽ:
+- Chỉ chèn dữ liệu khi ngày hôm đó đã có lịch trực trong `Doctor_Schedule`
+- Tạo đồng bộ `Appointment`, `Invoice`, `Invoice_Detail`, `Medical_record`
+- Tôn trọng trạng thái hợp lệ của từng bảng
+- Chạy lại an toàn, không tạo bản ghi trùng
+
+### 4 file seed cũ đã dọn có tác dụng gì
+
+1. `seed_completed_visits_linked_to_invoices.sql`
+  - Seed dữ liệu các ca khám đã hoàn tất và gắn hóa đơn theo từng lượt khám.
+  - Phù hợp để kiểm tra dữ liệu doanh thu và chi tiết hóa đơn.
+
+2. `seed_completed_visit_sync.sql`
+  - Sinh dữ liệu mẫu theo nhiều tháng, đồng bộ giữa lịch trực, ca khám hoàn tất và hóa đơn.
+  - Dùng để tạo dataset lớn hơn cho kiểm thử dashboard tổng hợp.
+
+3. `seed_dashboard_today_live_mssql.sql`
+  - Seed dữ liệu “hôm nay” cho dashboard live: lịch trực, trạng thái ca khám, doanh thu, số lượt khám.
+  - Thường dùng khi muốn dashboard có dữ liệu ngay trong ngày hiện tại.
+
+4. `seed_three_new_shifts_patient_statuses.sql`
+  - Seed 3 ca trực mới với các trạng thái bệnh nhân như `Waiting`, `In_Progress`, `Completed`.
+  - Dùng để test luồng trạng thái ca khám và hàng đợi bác sĩ.
+
+### Vì sao đã dọn các file cũ
+
+- Các file cũ có thể tạo dữ liệu chồng chéo hoặc phản ánh dữ liệu cũ, dễ làm lệch dashboard.
+- Giữ một file chính giúp tránh chạy nhầm nhiều bộ seed khác nhau.
+- File mới đã bao phủ đúng nhu cầu hiện tại: sinh dữ liệu mẫu theo thời gian thực và bám lịch trực sẵn có.
+
+---
+
 ## 📧 Support
 
 Nếu còn lỗi:
