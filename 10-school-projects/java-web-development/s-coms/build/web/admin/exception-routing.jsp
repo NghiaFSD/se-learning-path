@@ -68,6 +68,9 @@
                                 <c:when test="${q.appointmentStatus eq 'Waiting'}">
                                     <span class="badge text-bg-warning">Chờ đợi</span>
                                 </c:when>
+                                <c:when test="${q.appointmentStatus eq 'Checked_In'}">
+                                    <span class="badge text-bg-primary">Đã check-in</span>
+                                </c:when>
                                 <c:when test="${q.appointmentStatus eq 'In_Progress'}">
                                     <span class="badge text-bg-info">Đang khám</span>
                                 </c:when>

@@ -433,6 +433,7 @@
                                 <th>Ngày trực</th>
                                 <th>Khung giờ</th>
                                 <th>Tải hiện tại (Đã đặt / Tối đa)</th>
+                                <th>Quota online</th>
                                 <th>Mức tải</th>
                                 <th>Trạng thái slot</th>
                                 <th>Thao tác</th>
@@ -441,7 +442,7 @@
                         <tbody id="scheduleTableBody">
                             <c:if test="${empty schedules}">
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
                                         <i class="bi bi-inbox"></i> Không có ca trực nào. Hãy tạo lịch trực mới hoặc thay đổi bộ lọc.
                                     </td>
                                 </tr>
@@ -449,8 +450,11 @@
                             <c:forEach var="s" items="${schedules}">
                                 <c:set var="bookedAppointments" value="${empty s.bookedAppointments ? 0 : s.bookedAppointments}" />
                                 <c:set var="activeAppointments" value="${empty s.activeAppointments ? 0 : s.activeAppointments}" />
+                                <c:set var="onlineQuota" value="${empty s.onlineQuota ? s.maxPatients : s.onlineQuota}" />
+                                <c:set var="onlineBookedCount" value="${empty s.onlineBookedCount ? 0 : s.onlineBookedCount}" />
+                                <c:set var="reservedSlots" value="${empty s.reservedSlots ? (s.maxPatients - onlineQuota) : s.reservedSlots}" />
                                 <c:set var="loadPct" value="${s.maxPatients > 0 ? (bookedAppointments * 100.0 / s.maxPatients) : 0}" />
-                                <tr data-schedule-id="${s.scheduleId}" data-doctor-name="${s.doctorName}" data-department="${s.department}" data-load-pct="${loadPct}" data-active-appointments="${activeAppointments}" data-booked-appointments="${bookedAppointments}" data-max-patients="${s.maxPatients}">
+                                <tr data-schedule-id="${s.scheduleId}" data-doctor-name="${s.doctorName}" data-department="${s.department}" data-load-pct="${loadPct}" data-active-appointments="${activeAppointments}" data-booked-appointments="${bookedAppointments}" data-online-booked-count="${onlineBookedCount}" data-max-patients="${s.maxPatients}" data-online-quota="${onlineQuota}" data-reserved-slots="${reservedSlots}">
                                     <td>${s.doctorName}</td>
                                     <td>
                                         <c:choose>
@@ -466,6 +470,19 @@
                                     <td>
                                         <div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">${bookedAppointments} / ${s.maxPatients}</div>
                                         <small class="text-muted d-block text-center mt-1">Đang chờ/khám: ${activeAppointments}</small>
+                                        <small class="text-muted d-block text-center">Dự phòng: ${reservedSlots} slot</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="fw-semibold">${onlineBookedCount} / ${onlineQuota}</div>
+                                        <small class="text-muted d-block">Slot online</small>
+                                        <c:choose>
+                                            <c:when test="${onlineBookedCount ge onlineQuota and onlineQuota ge 0}">
+                                                <span class="badge text-bg-warning mt-1">Hết slot online</span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <span class="badge text-bg-success mt-1">Còn slot online</span>
+                                            </c:otherwise>
+                                        </c:choose>
                                     </td>
                                     <td class="schedule-load-cell">
                                         <div class="schedule-load-wrap" title="${loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')}">
@@ -529,10 +546,10 @@
                                             </c:when>
 
                                             <c:otherwise>
-                                                <a href="#" class="btn btn-sm btn-outline-primary me-2 transfer-btn"
-                                                   onclick="openTransferModalFromRow(this); return false;">
-                                                    <i class="bi bi-arrow-left-right"></i> Chuyển giao
-                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-primary me-2" style="border-color:#0d6efd;color:#0d6efd;"
+                                                        onclick="openEditScheduleModal('${s.scheduleId}'); return false;">
+                                                    <i class="bi bi-pencil-square"></i> Chỉnh sửa
+                                                </button>
                                                 <form method="post" action="${pageContext.request.contextPath}/admin" class="d-inline"
                                                       onsubmit="return confirm('Bạn chắc chắn muốn hủy ca trực này?');">
                                                     <input type="hidden" name="action" value="cancelSchedule">
@@ -629,6 +646,11 @@
                             <div class="mb-3">
                                 <label class="form-label">Số bệnh nhân tối đa</label>
                                 <input type="number" class="form-control" name="maxPatients" min="1" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Slot online</label>
+                                <input type="number" class="form-control" name="onlineQuota" min="0" placeholder="Tự động nếu bỏ trống">
+                                <div class="form-text">Nếu để trống, hệ thống sẽ tự dùng cấu hình an toàn mặc định.</div>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -870,6 +892,180 @@
                 const workDate = tr.querySelector('td:nth-child(3)')?.textContent.trim() || '';
                 const timeSlot = tr.querySelector('td:nth-child(4)')?.textContent.trim() || '';
                 openTransferModal(scheduleId, doctorName, department, workDate, timeSlot);
+            }
+        </script>
+        <script>
+            // Edit schedule: open modal, populate with schedule data, save via AJAX
+            async function openEditScheduleModal(scheduleId) {
+                const modalHtml = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form id="editScheduleForm">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Chỉnh sửa ca trực</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="editScheduleAlert" class="alert d-none" role="alert"></div>
+                                <input type="hidden" name="scheduleId" id="editScheduleId">
+                                <input type="hidden" name="csrfToken" value="${sessionScope.csrfToken}">
+                                <div class="mb-3">
+                                    <label class="form-label">Bác sĩ</label>
+                                    <select id="editDoctorId" name="doctorId" class="form-select" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Khung giờ</label>
+                                    <select id="editTimeSlot" name="timeSlot" class="form-select" required>
+                                        <option value="07:00-09:00">07:00-09:00</option>
+                                        <option value="09:00-11:00">09:00-11:00</option>
+                                        <option value="11:00-13:00">11:00-13:00</option>
+                                        <option value="13:00-15:00">13:00-15:00</option>
+                                        <option value="15:00-17:00">15:00-17:00</option>
+                                        <option value="17:00-19:00">17:00-19:00</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Số bệnh nhân tối đa</label>
+                                    <input type="number" id="editMaxPatients" name="maxPatients" class="form-control" min="1" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Slot online</label>
+                                    <input type="number" id="editOnlineQuota" name="onlineQuota" class="form-control" min="0">
+                                    <div class="form-text">Nếu để trống, hệ thống sẽ tự đặt theo cấu hình an toàn mặc định.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Trạng thái</label>
+                                    <select id="editStatus" name="status" class="form-select">
+                                        <option value="Available">Khả dụng</option>
+                                        <option value="Full">Đã đầy</option>
+                                        <option value="Cancelled">Đã hủy</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>`;
+
+                // create modal container
+                let container = document.getElementById('editScheduleModalContainer');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'editScheduleModalContainer';
+                    container.className = 'modal fade';
+                    container.tabIndex = -1;
+                    document.body.appendChild(container);
+                }
+                container.innerHTML = modalHtml;
+                const bsModal = new bootstrap.Modal(container);
+
+                // fetch schedule details
+                try {
+                    const resp = await fetch('${pageContext.request.contextPath}/admin?action=getSchedule&scheduleId=' + encodeURIComponent(scheduleId), { headers: { 'Accept': 'application/json' } });
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.json();
+                    if (!data || !data.schedule) throw new Error('Invalid response');
+
+                    // populate form
+                    document.getElementById('editScheduleId').value = data.schedule.scheduleId;
+                    document.getElementById('editMaxPatients').value = data.schedule.maxPatients || '';
+                    document.getElementById('editOnlineQuota').value = data.schedule.onlineQuota !== undefined && data.schedule.onlineQuota !== null ? data.schedule.onlineQuota : '';
+                    document.getElementById('editTimeSlot').value = data.schedule.timeSlot || '';
+                    document.getElementById('editStatus').value = data.schedule.status || 'Available';
+
+                    // populate doctors list
+                    const doctorSelect = document.getElementById('editDoctorId');
+                    doctorSelect.innerHTML = '<option>Đang tải...</option>';
+                    const doctors = data.doctors || [];
+                    let opts = '';
+                    for (const d of doctors) {
+                        opts += '<option value="' + d.doctorId + '"' + (d.doctorId == data.schedule.doctorId ? ' selected' : '') + '>' + escapeHtml(d.fullName) + ' - ' + escapeHtml(d.department) + '</option>';
+                    }
+                    doctorSelect.innerHTML = opts;
+
+                } catch (err) {
+                    const alert = document.getElementById('editScheduleAlert');
+                    if (alert) {
+                        alert.className = 'alert alert-danger';
+                        alert.textContent = 'Không tải được dữ liệu ca trực.';
+                    }
+                }
+
+                // submit handler
+                container.querySelector('#editScheduleForm').addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const form = e.target;
+                    const payload = {
+                        scheduleId: form.scheduleId.value,
+                        doctorId: form.doctorId.value,
+                        timeSlot: form.timeSlot.value,
+                        maxPatients: form.maxPatients.value,
+                        onlineQuota: form.onlineQuota.value,
+                        status: form.status.value,
+                        csrfToken: form.csrfToken ? form.csrfToken.value : ''
+                    };
+                    try {
+                        const resp = await fetch('${pageContext.request.contextPath}/admin?action=updateSchedule', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': payload.csrfToken },
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await resp.json();
+                        if (result && result.success) {
+                            bsModal.hide();
+                            // update row in table
+                            const row = document.querySelector('tr[data-schedule-id="' + payload.scheduleId + '"]');
+                            if (row) {
+                                row.querySelector('td:nth-child(4)').textContent = payload.timeSlot;
+                                row.setAttribute('data-max-patients', payload.maxPatients);
+                                row.setAttribute('data-online-quota', payload.onlineQuota || '');
+                                row.querySelector('td:nth-child(5) div').textContent = (row.dataset.bookedAppointments || 0) + ' / ' + payload.maxPatients;
+                                const onlineQuota = Number(payload.onlineQuota || row.dataset.onlineQuota || 0);
+                                const onlineBooked = Number(row.dataset.onlineBookedCount || 0);
+                                const quotaCell = row.querySelector('td:nth-child(6)');
+                                if (quotaCell) {
+                                    quotaCell.innerHTML = '<div class="fw-semibold">' + onlineBooked + ' / ' + onlineQuota + '</div>'
+                                        + '<small class="text-muted d-block">Slot online</small>'
+                                        + (onlineBooked >= onlineQuota ? '<span class="badge text-bg-warning mt-1">Hết slot online</span>' : '<span class="badge text-bg-success mt-1">Còn slot online</span>');
+                                }
+                                // update status badge
+                                const statusCell = row.querySelector('td:nth-child(8)');
+                                if (statusCell) statusCell.innerHTML = '<span class="badge text-bg-' + (payload.status === 'Available' ? 'success' : (payload.status === 'Full' ? 'danger' : 'dark')) + '">' + (payload.status === 'Available' ? '<i class="bi bi-check-circle"></i> Khả dụng' : (payload.status === 'Full' ? '<i class="bi bi-exclamation-circle"></i> Đã đầy' : '<i class="bi bi-x-circle"></i> Đã hủy')) + '</span>';
+                            }
+                            showTempAlert('Cập nhật ca trực thành công.', 'success');
+                        } else {
+                            const alertEl = container.querySelector('#editScheduleAlert');
+                            if (alertEl) {
+                                alertEl.className = 'alert alert-danger';
+                                alertEl.textContent = result && result.message ? result.message : 'Không thể cập nhật ca trực.';
+                            }
+                        }
+                    } catch (err) {
+                        const alertEl = container.querySelector('#editScheduleAlert');
+                        if (alertEl) {
+                            alertEl.className = 'alert alert-danger';
+                            alertEl.textContent = 'Lỗi khi gửi yêu cầu cập nhật.';
+                        }
+                    }
+                });
+
+                bsModal.show();
+            }
+
+            function showTempAlert(message, type) {
+                const div = document.createElement('div');
+                div.className = 'alert alert-' + (type || 'info');
+                div.textContent = message;
+                document.querySelector('.admin-content-col').insertAdjacentElement('afterbegin', div);
+                setTimeout(() => div.remove(), 3000);
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                return String(s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]; });
             }
         </script>
         <script>
@@ -1310,12 +1506,13 @@
                                     <tr>
                                         <th>Thời gian</th>
                                         <th>Tên bệnh nhân</th>
+                                        <th>Nguồn đặt</th>
                                         <th>Trạng thái khám</th>
                                     </tr>
                                 </thead>
                                 <tbody id="appointmentsTableBody">
                                     <tr>
-                                        <td colspan="3" class="text-center text-muted py-3">
+                                        <td colspan="4" class="text-center text-muted py-3">
                                             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                             Đang tải...
                                         </td>
@@ -1365,10 +1562,10 @@
                                 const err = await response.json().catch(() => null);
                                 const msg = (err && err.message) ? err.message : 'Phiên làm việc đã hết, vui lòng đăng nhập lại.';
                                 const tbody = document.getElementById('appointmentsTableBody');
-                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
                             } else {
                                 const tbody = document.getElementById('appointmentsTableBody');
-                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến đăng nhập...</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến đăng nhập...</td></tr>';
                             }
                             setTimeout(() => { window.location.href = '${pageContext.request.contextPath}/login.jsp'; }, 1200);
                             return Promise.reject(new Error('HTTP 401'));
@@ -1383,7 +1580,7 @@
                             const low = snippet.toLowerCase();
                             const looksLikeLogin = low.indexOf('đăng nhập') !== -1 || low.indexOf('login') !== -1 || low.indexOf('j_username') !== -1 || low.indexOf('<form') !== -1;
                             if (looksLikeLogin) {
-                                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến trang đăng nhập...</td></tr>';
+                                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-warning py-3"><i class="bi bi-exclamation-triangle me-2"></i>Phiên làm việc có thể đã hết. Bạn sẽ được chuyển đến trang đăng nhập...</td></tr>';
                                 // Redirect to login after short delay
                                 setTimeout(() => {
                                     window.location.href = '${pageContext.request.contextPath}/login.jsp';
@@ -1391,7 +1588,7 @@
                                 // Stop further processing
                                 return Promise.reject(new Error('Session expired - redirecting to login'));
                             }
-                            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>Server trả về nội dung không hợp lệ: ' + escapeHtmlForSchedule(snippet) + '</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>Server trả về nội dung không hợp lệ: ' + escapeHtmlForSchedule(snippet) + '</td></tr>';
                             return Promise.reject(new Error('Server returned non-JSON response'));
                         }
                         return response.json();
@@ -1399,7 +1596,7 @@
                     .then(data => {
                         const tbody = document.getElementById('appointmentsTableBody');
                         if (!data.items || data.items.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Chưa có bệnh nhân nào đặt lịch</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Chưa có bệnh nhân nào đặt lịch</td></tr>';
                             return;
                         }
 
@@ -1408,6 +1605,7 @@
                             return '<tr>'
                                 + '<td><strong>' + escapeHtmlForSchedule(item.appointmentTime || '') + '</strong></td>'
                                 + '<td>' + escapeHtmlForSchedule(item.patientName || '') + '</td>'
+                                + '<td>' + getBookingSourceBadge(item.bookingSource) + '</td>'
                                 + '<td>' + statusBadge + '</td>'
                                 + '</tr>';
                         }).join('');
@@ -1415,19 +1613,35 @@
                     .catch(error => {
                         const tbody = document.getElementById('appointmentsTableBody');
                         const msg = error && error.message ? error.message : 'Lỗi khi tải dữ liệu';
-                        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3"><i class="bi bi-exclamation-circle me-2"></i>' + escapeHtmlForSchedule(msg) + '</td></tr>';
                     });
             }, false);
             
             function getStatusBadge(status) {
                 const statusMap = {
                     'Waiting': '<span class="badge text-bg-warning"><i class="bi bi-hourglass-split me-1"></i>Chờ đợi</span>',
+                    'Checked_In': '<span class="badge text-bg-primary"><i class="bi bi-person-check me-1"></i>Đã check-in</span>',
                     'In_Progress': '<span class="badge text-bg-info"><i class="bi bi-play-circle me-1"></i>Đang khám</span>',
                     'Completed': '<span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Hoàn tất</span>',
                     'No_Show': '<span class="badge text-bg-secondary"><i class="bi bi-x-circle me-1"></i>Không có mặt</span>',
                     'Cancelled': '<span class="badge text-bg-danger"><i class="bi bi-trash me-1"></i>Đã hủy</span>'
                 };
                 return statusMap[status] || '<span class="badge text-bg-secondary">' + (status || 'Không xác định') + '</span>';
+            }
+
+            function getBookingSourceBadge(source) {
+                const normalized = (source || '').toString().trim();
+                const sourceMap = {
+                    'Online': '<span class="badge text-bg-success"><i class="bi bi-globe2 me-1"></i>Online</span>',
+                    'Receptionist': '<span class="badge text-bg-primary"><i class="bi bi-person-badge me-1"></i>Lễ tân</span>',
+                    'Admin': '<span class="badge text-bg-dark"><i class="bi bi-shield-lock me-1"></i>Admin</span>',
+                    'Walk_In': '<span class="badge text-bg-warning text-dark"><i class="bi bi-door-open me-1"></i>Walk-in</span>',
+                    'Emergency_Routing': '<span class="badge text-bg-danger"><i class="bi bi-lightning-charge me-1"></i>Điều phối</span>'
+                };
+                if (!normalized) {
+                    return '<span class="badge text-bg-secondary">Không rõ</span>';
+                }
+                return sourceMap[normalized] || '<span class="badge text-bg-secondary">' + escapeHtmlForSchedule(normalized) + '</span>';
             }
             
             // Hàm escapeHtml để tránh XSS

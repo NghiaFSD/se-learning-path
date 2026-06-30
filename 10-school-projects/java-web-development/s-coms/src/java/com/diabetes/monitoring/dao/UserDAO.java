@@ -134,20 +134,29 @@ public class UserDAO {
                 if (rs.next()) {
                     String storedHash = rs.getString("password_hash");
                     String status = rs.getString("status");
-                    
-                    // Check if account is active (allow NULL as active for existing accounts)
+
+                    // Check password match (handles PBKDF2, legacy SHA-256, or plaintext)
                     if (PasswordUtil.matches(password, storedHash)) {
                         int accountId = rs.getInt("account_id");
                         String fullName = rs.getString("full_name");
                         String userRole = rs.getString("role");
-                        
+
+                        // If stored password needs rehashing to PBKDF2, update it
+                        try {
+                            if (PasswordUtil.needsRehash(storedHash)) {
+                                updatePassword(accountId, PasswordUtil.hashPassword(password));
+                            }
+                        } catch (Exception ex) {
+                            LOGGER.log(Level.WARNING, "Failed to rehash password for account {0}", accountId);
+                        }
+
                         User user = new User();
                         user.setId(accountId);
                         user.setFullName(fullName);
                         user.setEmail(email);
                         user.setRole(userRole);
                         user.setStatus(status);
-                        
+
                         // For patients, fetch additional info from Patient table
                         if ("patient".equals(role)) {
                             loadPatientDetails(connection, user, accountId);
@@ -156,7 +165,7 @@ public class UserDAO {
                         else if ("doctor".equals(role)) {
                             loadDoctorDetails(connection, user, accountId);
                         }
-                        
+
                         return user;
                     }
                 }
@@ -184,6 +193,15 @@ public class UserDAO {
                         int accountId = rs.getInt("account_id");
                         String fullName = rs.getString("full_name");
                         String userRole = rs.getString("role");
+
+                        // Rehash on successful legacy match
+                        try {
+                            if (PasswordUtil.needsRehash(storedHash)) {
+                                updatePassword(accountId, PasswordUtil.hashPassword(password));
+                            }
+                        } catch (Exception ex) {
+                            LOGGER.log(Level.WARNING, "Failed to rehash password for account {0}", accountId);
+                        }
 
                         User user = new User();
                         user.setId(accountId);

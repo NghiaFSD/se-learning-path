@@ -392,7 +392,7 @@
                     <div class="card daily-widget-card daily-widget-clickable h-100" onclick="openTodayWaitingModal()">
                         <div class="card-body">
                             <span class="kpi-icon-box kpi-icon-waiting"><i class="fa-solid fa-user-clock"></i></span>
-                            <div class="daily-widget-title">Số bệnh nhân đang chờ</div>
+                            <div class="daily-widget-title">Số bệnh nhân đã check-in</div>
                             <div class="daily-widget-value" id="dailyWaitingPatients"><c:out value="${waitingPatients}" default="0" /></div>
                         </div>
                     </div>
@@ -411,7 +411,7 @@
             <div class="card mt-3 queue-monitor-card">
                 <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
                     <span>Tình trạng hàng đợi phòng khám hôm nay</span>
-                    <span class="badge bg-warning text-dark queue-summary-badge">Tổng ca chờ: ${totalWaitingToday}</span>
+                    <span class="badge bg-primary text-white queue-summary-badge">Tổng bệnh nhân đã check-in: ${totalWaitingToday}</span>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive queue-table-scroll">
@@ -466,7 +466,7 @@
                 <div class="col-md-4">
                     <div class="card chart-panel h-100">
                         <div class="card-body">
-                            <h6 class="card-title">Doanh thu theo loại dịch vụ hôm nay</h6>
+                            <h6 class="card-title">Doanh thu theo loại dịch vụ</h6>
                             <div class="chart-canvas-wrap">
                                 <canvas id="todayRevenueServiceChart"></canvas>
                             </div>
@@ -597,7 +597,7 @@
             <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
                 <div class="modal-content border-0 shadow">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="todayWaitingModalLabel">Danh sách bệnh nhân đang xếp hàng chờ</h5>
+                        <h5 class="modal-title" id="todayWaitingModalLabel">Danh sách bệnh nhân đã check-in</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -672,6 +672,9 @@
                                                         <c:set var="currentLoad" value="${empty shift.currentLoad ? 0 : shift.currentLoad}" />
                                                         <c:set var="activeLoad" value="${empty shift.activeCount ? 0 : shift.activeCount}" />
                                                         <c:set var="maxPatients" value="${empty shift.maxPatients ? 0 : shift.maxPatients}" />
+                                                        <c:set var="onlineQuota" value="${empty shift.onlineQuota ? (maxPatients > 1 ? maxPatients - 1 : maxPatients) : shift.onlineQuota}" />
+                                                        <c:set var="onlineBookedCount" value="${empty shift.onlineBookedCount ? 0 : shift.onlineBookedCount}" />
+                                                        <c:set var="reservedSlots" value="${empty shift.reservedSlots ? (maxPatients - onlineQuota) : shift.reservedSlots}" />
                                                         <c:choose>
                                                             <c:when test="${maxPatients le 0}">
                                                                 <span class="badge bg-secondary">${currentLoad} / ${maxPatients}</span>
@@ -686,7 +689,8 @@
                                                                 <span class="badge bg-success">${currentLoad} / ${maxPatients}</span>
                                                             </c:otherwise>
                                                         </c:choose>
-                                                        <small class="d-block text-muted mt-1">Đang chờ/khám: ${activeLoad}</small>
+                                                        <small class="d-block text-muted mt-1">Đã check-in/đang khám: ${activeLoad}</small>
+                                                        <small class="d-block text-muted">Online: ${onlineBookedCount}/${onlineQuota} - Dự phòng: ${reservedSlots} slot</small>
                                                     </td>
                                                     <td>
                                                         <c:choose>
@@ -864,6 +868,11 @@
                                                                     label: 'Chờ đợi',
                                                                     className: 'badge bg-warning text-dark status-badge-soft'
                                                                 };
+                                                            case 'Checked_In':
+                                                                return {
+                                                                    label: 'Đã check-in',
+                                                                    className: 'badge bg-primary text-white status-badge-soft'
+                                                                };
                                                             case 'In_Progress':
                                                                 return {
                                                                     label: 'Đang khám',
@@ -920,7 +929,7 @@
                                                         }
 
                                                         if (!Array.isArray(items) || items.length === 0) {
-                                                            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Không có bệnh nhân đang chờ trong ngày.</td></tr>';
+                                                            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Không có bệnh nhân đã check-in trong ngày.</td></tr>';
                                                             return;
                                                         }
 
@@ -969,7 +978,7 @@
                                                             renderTodayWaitingRows(data.items || []);
                                                         } catch (error) {
                                                             if (tbody) {
-                                                                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Không thể tải danh sách bệnh nhân đang chờ.</td></tr>';
+                                                                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Không thể tải danh sách bệnh nhân đã check-in.</td></tr>';
                                                             }
                                                         }
                                                     }
@@ -986,7 +995,7 @@
                                                         }
 
                                                         if (!Array.isArray(items) || items.length === 0) {
-                                                            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Không có bệnh nhân đang chờ cho bác sĩ này hôm nay.</td></tr>';
+                                                            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Không có bệnh nhân đã check-in cho bác sĩ này hôm nay.</td></tr>';
                                                             return;
                                                         }
 
@@ -1029,7 +1038,7 @@
                                                             renderDoctorQueueRows(data.items || []);
                                                         } catch (error) {
                                                             if (tbody) {
-                                                                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Không thể tải danh sách bệnh nhân đang chờ.</td></tr>';
+                                                                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Không thể tải danh sách bệnh nhân đã check-in.</td></tr>';
                                                             }
                                                         }
                                                     }
@@ -1411,9 +1420,11 @@
 
                                                         const statusMap = {
                                                             Waiting: 0,
+                                                            Checked_In: 0,
                                                             In_Progress: 0,
                                                             Completed: 0,
-                                                            No_Show: 0
+                                                            No_Show: 0,
+                                                            Cancelled: 0
                                                         };
 
                                                         if (Array.isArray(todayStatusDistributionData)) {
@@ -1428,9 +1439,11 @@
 
                                                         const statusValues = [
                                                             statusMap.Waiting,
+                                                            statusMap.Checked_In,
                                                             statusMap.In_Progress,
                                                             statusMap.Completed,
-                                                            statusMap.No_Show
+                                                            statusMap.No_Show,
+                                                            statusMap.Cancelled
                                                         ];
 
                                                         const flowCanvas = document.getElementById('todayHourlyFlowChart');
@@ -1538,10 +1551,10 @@
                                                             new Chart(statusCanvas, {
                                                                 type: 'doughnut',
                                                                 data: {
-                                                                    labels: ['Đang chờ', 'Đang khám', 'Đã hoàn tất', 'Không đến'],
+                                                                    labels: ['Đang chờ', 'Đã check-in', 'Đang khám', 'Đã hoàn tất', 'Không đến', 'Đã hủy'],
                                                                     datasets: [{
                                                                             data: statusValues,
-                                                                            backgroundColor: ['#f4a261', '#4cc9f0', '#2a9d8f', '#6c757d']
+                                                                            backgroundColor: ['#f4a261', '#4361ee', '#4cc9f0', '#2a9d8f', '#6c757d', '#dc3545']
                                                                         }]
                                                                 },
                                                                 options: {

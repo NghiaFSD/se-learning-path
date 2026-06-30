@@ -95,3 +95,6 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+
+# Chặn lộ mật khẩu Database
+db.properties

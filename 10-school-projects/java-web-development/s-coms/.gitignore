@@ -1,0 +1,4 @@
+# Ignore sensitive DB properties
+/src/db.properties
+# Also ignore root db.properties if accidentally created
+db.properties

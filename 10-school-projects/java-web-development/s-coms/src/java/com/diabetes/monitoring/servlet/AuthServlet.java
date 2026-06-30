@@ -45,13 +45,20 @@ public class AuthServlet extends HttpServlet {
                 return;
             }
 
-            HttpSession session = request.getSession();
+            // Mitigate session fixation: invalidate existing session and create a new one
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) {
+                try {
+                    oldSession.invalidate();
+                } catch (IllegalStateException ignored) {}
+            }
+            HttpSession session = request.getSession(true);
             session.setAttribute("currentUser", user);
             String actualRole = user.getRole();
-            if ("patient".equals(actualRole)) {
+            if ("patient".equalsIgnoreCase(actualRole)) {
                 response.sendRedirect(request.getContextPath() + "/patient/dashboard.jsp");
-            } else if ("admin".equals(actualRole)) {
-                response.sendRedirect(request.getContextPath() + "/admin/dashboard.jsp");
+            } else if ("admin".equalsIgnoreCase(actualRole)) {
+                response.sendRedirect(request.getContextPath() + "/admin");
             } else {
                 response.sendRedirect(request.getContextPath() + "/index.jsp");
             }

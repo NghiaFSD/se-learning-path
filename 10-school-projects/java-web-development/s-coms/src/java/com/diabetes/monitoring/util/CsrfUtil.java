@@ -33,6 +33,10 @@ public final class CsrfUtil {
 
         String expected = (String) session.getAttribute(SESSION_ATTRIBUTE);
         String actual = request.getParameter(PARAMETER_NAME);
+        if (actual == null || actual.isBlank()) {
+            // also accept token via common AJAX header name
+            actual = request.getHeader("X-CSRF-Token");
+        }
         return expected != null && actual != null && constantTimeEquals(expected, actual);
     }
 

@@ -199,7 +199,7 @@
 
         <div class="col-lg-6">
             <div class="card h-100">
-                <div class="card-header fw-semibold">Lượt khám (COUNT(appointment_id), Appointment.status = 'Completed')</div>
+                <div class="card-header fw-semibold">Lượt khám hoàn tất (COUNT(appointment_id), Appointment.status = 'Completed')</div>
                 <div class="card-body">
                     <div class="report-chart-panel">
                         <canvas id="visitChart"></canvas>
@@ -431,6 +431,10 @@
         switch (normalized) {
             case 'Completed':
                 return { label: 'Hoàn tất', className: 'badge bg-success' };
+            case 'Checked_In':
+                return { label: 'Đã check-in', className: 'badge bg-primary' };
+            case 'Cancelled':
+                return { label: 'Đã hủy', className: 'badge bg-danger' };
             case 'No_Show':
                 return { label: 'Không đến', className: 'badge bg-secondary' };
             case 'In_Progress':

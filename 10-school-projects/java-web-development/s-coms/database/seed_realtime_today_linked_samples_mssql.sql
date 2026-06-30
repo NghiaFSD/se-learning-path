@@ -1,13 +1,21 @@
-USE [Project];
+USE [Project_SWP];
 GO
 
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET ANSI_WARNINGS ON;
+SET ANSI_PADDING ON;
+SET QUOTED_IDENTIFIER ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
 
 BEGIN TRY
     BEGIN TRAN;
 
-    DECLARE @today DATE = CAST(GETDATE() AS DATE);
+    DECLARE @seedStartDate DATE = CAST(GETDATE() AS DATE);
+    DECLARE @seedEndDate DATE = DATEADD(DAY, 2, @seedStartDate);
     DECLARE @now DATETIME = GETDATE();
 
     DECLARE @examServiceId INT = NULL;
@@ -59,7 +67,8 @@ BEGIN TRY
         ORDER BY a.account_id;
     END;
 
-    DECLARE @TodaySchedules TABLE (
+    DECLARE @TargetSchedules TABLE (
+        seed_date DATE NOT NULL,
         schedule_id INT PRIMARY KEY,
         doctor_id INT NOT NULL,
         time_slot VARCHAR(30) NOT NULL,
@@ -67,21 +76,27 @@ BEGIN TRY
         schedule_rank INT NOT NULL
     );
 
-    INSERT INTO @TodaySchedules (schedule_id, doctor_id, time_slot, slot_start, schedule_rank)
-    SELECT TOP (6)
-        ds.schedule_id,
-        ds.doctor_id,
-        ds.time_slot,
-        CAST(CONVERT(VARCHAR(10), @today, 120) + ' ' + LEFT(ds.time_slot, 5) + ':00' AS DATETIME),
-        ROW_NUMBER() OVER (
-            ORDER BY TRY_CONVERT(TIME, LEFT(ds.time_slot, 5) + ':00'), ds.schedule_id
-        )
-    FROM dbo.Doctor_Schedule ds
-    WHERE ds.work_date = @today
-      AND LOWER(ISNULL(ds.status, 'available')) <> 'cancelled'
-    ORDER BY TRY_CONVERT(TIME, LEFT(ds.time_slot, 5) + ':00'), ds.schedule_id;
+    ;WITH RankedSchedules AS (
+        SELECT
+            ds.work_date AS seed_date,
+            ds.schedule_id,
+            ds.doctor_id,
+            ds.time_slot,
+            CAST(CONVERT(VARCHAR(10), ds.work_date, 120) + ' ' + LEFT(ds.time_slot, 5) + ':00' AS DATETIME) AS slot_start,
+            ROW_NUMBER() OVER (
+                PARTITION BY ds.work_date
+                ORDER BY TRY_CONVERT(TIME, LEFT(ds.time_slot, 5) + ':00'), ds.schedule_id
+            ) AS schedule_rank
+        FROM dbo.Doctor_Schedule ds
+        WHERE ds.work_date BETWEEN @seedStartDate AND @seedEndDate
+          AND LOWER(ISNULL(ds.status, 'available')) <> 'cancelled'
+    )
+    INSERT INTO @TargetSchedules (seed_date, schedule_id, doctor_id, time_slot, slot_start, schedule_rank)
+    SELECT seed_date, schedule_id, doctor_id, time_slot, slot_start, schedule_rank
+    FROM RankedSchedules
+    WHERE schedule_rank <= 6;
 
-    IF NOT EXISTS (SELECT 1 FROM @TodaySchedules)
+    IF NOT EXISTS (SELECT 1 FROM @TargetSchedules)
     BEGIN
         PRINT N'[SKIP] No usable schedules found for today. Nothing to seed.';
         COMMIT TRAN;
@@ -102,16 +117,12 @@ BEGIN TRY
 
     DECLARE @Seed TABLE (
         seed_id INT IDENTITY(1,1) PRIMARY KEY,
+        seed_date DATE NOT NULL,
         schedule_id INT NOT NULL,
         doctor_id INT NOT NULL,
         schedule_rank INT NOT NULL,
         queue_number INT NOT NULL,
-        patient_email NVARCHAR(128) NOT NULL,
-        patient_name NVARCHAR(120) NOT NULL,
-        patient_gender NVARCHAR(20) NOT NULL,
-        patient_dob DATE NOT NULL,
-        patient_phone NVARCHAR(30) NOT NULL,
-        patient_address NVARCHAR(200) NOT NULL,
+        patient_id INT NULL,
         booking_type VARCHAR(20) NOT NULL,
         appointment_time DATETIME NOT NULL,
         appointment_status VARCHAR(20) NOT NULL,
@@ -124,16 +135,11 @@ BEGIN TRY
     );
 
     INSERT INTO @Seed (
+        seed_date,
         schedule_id,
         doctor_id,
         schedule_rank,
         queue_number,
-        patient_email,
-        patient_name,
-        patient_gender,
-        patient_dob,
-        patient_phone,
-        patient_address,
         booking_type,
         appointment_time,
         appointment_status,
@@ -142,56 +148,68 @@ BEGIN TRY
         should_invoice
     )
     SELECT
+        s.seed_date,
         s.schedule_id,
         s.doctor_id,
         s.schedule_rank,
         q.queue_number,
-        CONCAT('seed.today.', CONVERT(VARCHAR(8), @today, 112), '.', s.schedule_id, '.', q.queue_number, '@example.com'),
-        CONCAT(N'Seed Patient ', RIGHT('00' + CAST(s.schedule_rank AS VARCHAR(2)), 2), '-', q.queue_number),
-        CASE WHEN (s.schedule_rank + q.queue_number) % 2 = 0 THEN N'Male' ELSE N'Female' END,
-        DATEFROMPARTS(
-            YEAR(@today) - (25 + s.schedule_rank),
-            ((s.schedule_rank + q.queue_number) % 12) + 1,
-            ((s.schedule_rank * 3 + q.queue_number) % 27) + 1
-        ),
-        CONCAT('09', RIGHT('00000000' + CAST(7000000 + (s.schedule_rank * 100) + q.queue_number AS VARCHAR(8)), 8)),
-        CONCAT(N'Sample ward ', s.schedule_rank),
         q.booking_type,
         DATEADD(MINUTE, q.minute_offset, s.slot_start),
         CASE
-            WHEN s.slot_start <= DATEADD(MINUTE, -90, @now) THEN
-                CASE q.queue_number
-                    WHEN 1 THEN 'Completed'
-                    WHEN 2 THEN 'Completed'
-                    ELSE 'No_Show'
-                END
-            WHEN s.slot_start <= DATEADD(MINUTE, -30, @now) THEN
+            WHEN CAST(s.seed_date AS DATE) = CAST(@now AS DATE) AND s.slot_start <= DATEADD(MINUTE, -90, @now) THEN
                 CASE q.queue_number
                     WHEN 1 THEN 'Completed'
                     WHEN 2 THEN 'In_Progress'
-                    ELSE 'Waiting'
+                    WHEN 3 THEN 'Checked_In'
+                    WHEN 4 THEN 'Waiting'
+                    WHEN 5 THEN 'No_Show'
+                    ELSE 'Cancelled'
                 END
-            WHEN s.slot_start <= DATEADD(MINUTE, 30, @now) THEN
+            WHEN CAST(s.seed_date AS DATE) = CAST(@now AS DATE) AND s.slot_start <= DATEADD(MINUTE, -30, @now) THEN
+                CASE q.queue_number
+                    WHEN 1 THEN 'Completed'
+                    WHEN 2 THEN 'Checked_In'
+                    WHEN 3 THEN 'In_Progress'
+                    WHEN 4 THEN 'Waiting'
+                    WHEN 5 THEN 'No_Show'
+                    ELSE 'Cancelled'
+                END
+            WHEN CAST(s.seed_date AS DATE) = CAST(@now AS DATE) AND s.slot_start <= DATEADD(MINUTE, 30, @now) THEN
                 CASE q.queue_number
                     WHEN 1 THEN 'Waiting'
-                    WHEN 2 THEN 'In_Progress'
-                    ELSE 'Waiting'
+                    WHEN 2 THEN 'Checked_In'
+                    WHEN 3 THEN 'In_Progress'
+                    WHEN 4 THEN 'Completed'
+                    WHEN 5 THEN 'No_Show'
+                    ELSE 'Cancelled'
                 END
-            ELSE 'Waiting'
+            ELSE
+                CASE q.queue_number
+                    WHEN 1 THEN 'Waiting'
+                    WHEN 2 THEN 'Checked_In'
+                    WHEN 3 THEN 'In_Progress'
+                    WHEN 4 THEN 'Waiting'
+                    WHEN 5 THEN 'No_Show'
+                    ELSE 'Cancelled'
+                END
         END,
         q.service_kind,
         q.payment_method,
         CASE
-            WHEN s.slot_start <= DATEADD(MINUTE, -30, @now)
-                 AND q.queue_number IN (1, 2) THEN 1
+            WHEN CAST(s.seed_date AS DATE) = CAST(@now AS DATE)
+                 AND s.slot_start <= DATEADD(MINUTE, -30, @now)
+                 AND q.queue_number IN (1, 2, 3, 4) THEN 1
             ELSE 0
         END
-    FROM @TodaySchedules s
+    FROM @TargetSchedules s
     CROSS APPLY (
         VALUES
             (1, 5,  'Online',     'exam', 'Cash'),
             (2, 20, 'At_Counter', 'lab',  'VNPay'),
-            (3, 35, 'Online',     'exam', 'Momo')
+            (3, 35, 'Online',     'exam', 'Momo'),
+            (4, 50, 'At_Counter', 'lab',  'Cash'),
+            (5, 65, 'Online',     'exam', 'VNPay'),
+            (6, 80, 'At_Counter', 'lab',  'Momo')
     ) q(queue_number, minute_offset, booking_type, service_kind, payment_method);
 
     UPDATE s
@@ -202,48 +220,33 @@ BEGIN TRY
     FROM @Seed s
     JOIN @serviceMap sm ON sm.service_kind = s.service_kind;
 
-    INSERT INTO dbo.Account (full_name, password_hash, email, role, created_at, status)
-    SELECT DISTINCT
-        s.patient_name,
-        'seed_hash',
-        s.patient_email,
-        'Patient',
-        GETDATE(),
-        'Active'
-    FROM @Seed s
-    WHERE NOT EXISTS (
-        SELECT 1 FROM dbo.Account a WHERE a.email = s.patient_email
-    );
-
-    INSERT INTO dbo.Patient (full_name, date_of_birth, gender, phone, email, address, account_id)
-    SELECT DISTINCT
-        s.patient_name,
-        s.patient_dob,
-        s.patient_gender,
-        s.patient_phone,
-        s.patient_email,
-        s.patient_address,
-        a.account_id
-    FROM @Seed s
-    JOIN dbo.Account a ON a.email = s.patient_email
-    WHERE NOT EXISTS (
-        SELECT 1 FROM dbo.Patient p WHERE p.account_id = a.account_id
-    );
-
-    CREATE TABLE #PatientMap (
-        patient_email NVARCHAR(128) NOT NULL PRIMARY KEY,
-        account_id INT NOT NULL,
+    CREATE TABLE #PatientPool (
+        patient_row INT NOT NULL PRIMARY KEY,
         patient_id INT NOT NULL
     );
 
-    INSERT INTO #PatientMap (patient_email, account_id, patient_id)
-    SELECT a.email, a.account_id, p.patient_id
-    FROM dbo.Account a
-    JOIN dbo.Patient p ON p.account_id = a.account_id
-    WHERE a.email IN (SELECT DISTINCT patient_email FROM @Seed);
+    DECLARE @PatientCount INT;
+
+    INSERT INTO #PatientPool (patient_row, patient_id)
+    SELECT ROW_NUMBER() OVER (ORDER BY p.patient_id), p.patient_id
+    FROM dbo.Patient p
+    ORDER BY p.patient_id;
+
+    SELECT @PatientCount = COUNT(*) FROM #PatientPool;
+
+    IF @PatientCount IS NULL OR @PatientCount = 0
+    BEGIN
+        THROW 50001, 'No existing patients available to seed appointments.', 1;
+    END;
+
+    UPDATE s
+    SET s.patient_id = pp.patient_id
+    FROM @Seed s
+    JOIN #PatientPool pp ON pp.patient_row = ((s.seed_id - 1) % @PatientCount) + 1;
 
     UPDATE ap
     SET
+        ap.patient_id = s.patient_id,
         ap.doctor_id = s.doctor_id,
         ap.appointment_time = s.appointment_time,
         ap.status = s.appointment_status,
@@ -251,8 +254,7 @@ BEGIN TRY
         ap.created_at = ISNULL(ap.created_at, GETDATE())
     FROM dbo.Appointment ap
     JOIN @Seed s ON s.schedule_id = ap.schedule_id AND s.queue_number = ap.queue_number
-    JOIN #PatientMap pm ON pm.patient_id = ap.patient_id AND pm.patient_email = s.patient_email
-    WHERE CAST(ap.appointment_time AS DATE) = @today;
+    WHERE CAST(ap.appointment_time AS DATE) = s.seed_date;
 
     INSERT INTO dbo.Appointment (
         patient_id,
@@ -265,7 +267,7 @@ BEGIN TRY
         queue_number
     )
     SELECT
-        pm.patient_id,
+        s.patient_id,
         s.doctor_id,
         s.schedule_id,
         s.appointment_time,
@@ -274,18 +276,15 @@ BEGIN TRY
         s.booking_type,
         s.queue_number
     FROM @Seed s
-    JOIN #PatientMap pm ON pm.patient_email = s.patient_email
     WHERE NOT EXISTS (
         SELECT 1
         FROM dbo.Appointment ap
         WHERE ap.schedule_id = s.schedule_id
           AND ap.queue_number = s.queue_number
-          AND ap.patient_id = pm.patient_id
-          AND CAST(ap.appointment_time AS DATE) = @today
+        AND CAST(ap.appointment_time AS DATE) = s.seed_date
     );
 
     CREATE TABLE #AppointmentMap (
-        patient_email NVARCHAR(128) NOT NULL PRIMARY KEY,
         appointment_id INT NOT NULL,
         patient_id INT NOT NULL,
         doctor_id INT NOT NULL,
@@ -302,7 +301,6 @@ BEGIN TRY
     );
 
     INSERT INTO #AppointmentMap (
-        patient_email,
         appointment_id,
         patient_id,
         doctor_id,
@@ -318,9 +316,8 @@ BEGIN TRY
         should_invoice
     )
     SELECT
-        s.patient_email,
         ap.appointment_id,
-        pm.patient_id,
+        s.patient_id,
         s.doctor_id,
         s.schedule_id,
         s.queue_number,
@@ -333,12 +330,10 @@ BEGIN TRY
         s.payment_method,
         s.should_invoice
     FROM @Seed s
-    JOIN #PatientMap pm ON pm.patient_email = s.patient_email
     JOIN dbo.Appointment ap
       ON ap.schedule_id = s.schedule_id
      AND ap.queue_number = s.queue_number
-     AND ap.patient_id = pm.patient_id
-     AND CAST(ap.appointment_time AS DATE) = @today;
+    AND CAST(ap.appointment_time AS DATE) = s.seed_date;
 
     INSERT INTO dbo.Invoice (
         patient_id,
@@ -390,7 +385,7 @@ BEGIN TRY
         am.service_price
     FROM #AppointmentMap am
     JOIN dbo.Invoice i
-      ON i.patient_id = am.patient_id
+    ON i.patient_id = am.patient_id
      AND i.created_at = am.invoice_created_at
      AND i.final_amount = am.service_price
     WHERE am.should_invoice = 1
@@ -454,26 +449,28 @@ BEGIN TRY
         ELSE 'Available'
     END
     FROM dbo.Doctor_Schedule ds
-    JOIN @TodaySchedules ts ON ts.schedule_id = ds.schedule_id
+    JOIN @TargetSchedules ts ON ts.schedule_id = ds.schedule_id
     CROSS APPLY (
         SELECT COUNT(*) AS total_assigned
         FROM dbo.Appointment ap
         WHERE ap.schedule_id = ds.schedule_id
-          AND CAST(ap.appointment_time AS DATE) = @today
+            AND CAST(ap.appointment_time AS DATE) = ts.seed_date
           AND LOWER(ISNULL(ap.status, '')) <> 'cancelled'
     ) x
-    WHERE LOWER(ISNULL(ds.status, 'available')) <> 'cancelled';
+        WHERE LOWER(ISNULL(ds.status, 'available')) <> 'cancelled';
 
     COMMIT TRAN;
 
-    SELECT 'schedules_today' AS metric, COUNT(*) AS val FROM @TodaySchedules
-    UNION ALL SELECT 'appointments_today', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) = @today
-    UNION ALL SELECT 'waiting_today', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) = @today AND LOWER(ISNULL(status, '')) = 'waiting'
-    UNION ALL SELECT 'in_progress_today', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) = @today AND LOWER(ISNULL(status, '')) = 'in_progress'
-    UNION ALL SELECT 'completed_today', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) = @today AND LOWER(ISNULL(status, '')) = 'completed'
-    UNION ALL SELECT 'no_show_today', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) = @today AND LOWER(ISNULL(status, '')) = 'no_show'
-    UNION ALL SELECT 'paid_invoices_today', COUNT(*) FROM dbo.Invoice WHERE CAST(created_at AS DATE) = @today AND LOWER(ISNULL(status, '')) = 'paid'
-    UNION ALL SELECT 'medical_records_today', COUNT(*) FROM dbo.Medical_record WHERE CAST(processed_at AS DATE) = @today;
+    SELECT 'schedules_seeded' AS metric, COUNT(*) AS val FROM @TargetSchedules
+    UNION ALL SELECT 'appointments_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate
+    UNION ALL SELECT 'waiting_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'waiting'
+    UNION ALL SELECT 'checked_in_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'checked_in'
+    UNION ALL SELECT 'in_progress_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'in_progress'
+    UNION ALL SELECT 'completed_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'completed'
+    UNION ALL SELECT 'no_show_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'no_show'
+    UNION ALL SELECT 'cancelled_seeded', COUNT(*) FROM dbo.Appointment WHERE CAST(appointment_time AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'cancelled'
+    UNION ALL SELECT 'paid_invoices_seeded', COUNT(*) FROM dbo.Invoice WHERE CAST(created_at AS DATE) BETWEEN @seedStartDate AND @seedEndDate AND LOWER(ISNULL(status, '')) = 'paid'
+    UNION ALL SELECT 'medical_records_seeded', COUNT(*) FROM dbo.Medical_record WHERE CAST(processed_at AS DATE) BETWEEN @seedStartDate AND @seedEndDate;
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0

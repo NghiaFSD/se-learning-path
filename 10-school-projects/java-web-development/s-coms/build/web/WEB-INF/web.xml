@@ -56,7 +56,7 @@
     <!-- #region ======= ADMIN MODULE SERVLETS ======= -->
     <servlet>
         <servlet-name>AdminServlet</servlet-name>
-        <servlet-class>com.diabetes.monitoring.servlet.AdminServlet</servlet-class>
+        <servlet-class>com.diabetes.monitoring.admin.AdminServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>AdminServlet</servlet-name>

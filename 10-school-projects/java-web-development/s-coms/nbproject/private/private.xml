@@ -6,13 +6,7 @@
             <file>file:/D:/Ky5/SWP391/SWP_Project_Hieu/SWP_Project/web/js/chat.js</file>
         </group>
         <group name="ÔN_PRJ_PE">
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/web/admin/dashboard.jsp</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/src/java/com/diabetes/monitoring/servlet/AdminServlet.java</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/src/java/com/diabetes/monitoring/servlet/AIRecommendationServlet.java</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/src/java/com/diabetes/monitoring/util/GeminiConfigUtil.java</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/src/java/com/diabetes/monitoring/dao/AdminDAO.java</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/src/java/com/diabetes/monitoring/util/GeminiSchedulingService.java</file>
-            <file>file:/D:/SE-Learning-Path/java-web-development/S-COMS/web/admin/schedule-management.jsp</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/model/ChatMessage.java</file>
         </group>
     </open-files>
 </project-private>
