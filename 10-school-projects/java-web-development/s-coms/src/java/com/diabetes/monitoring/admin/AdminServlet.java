@@ -16,7 +16,11 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
 /**
- * Front controller for all Admin HTTP actions.
+ * Front controller for the Admin area.
+ *
+ * <p>This servlet keeps URL mapping stable at {@code /admin} and delegates
+ * each action to the proper feature handler: analytics, management,
+ * scheduling, or patient flow.</p>
  */
 public class AdminServlet extends HttpServlet {
     private final AdminAnalyticsHandler analyticsHandler = new AdminAnalyticsHandler();
@@ -25,7 +29,12 @@ public class AdminServlet extends HttpServlet {
     private final AdminPatientFlowHandler patientFlowHandler = new AdminPatientFlowHandler();
 
     /**
-     * Routes Admin GET requests to the matching feature handler.
+     * Handles read-only Admin requests and forwards them to matching handlers.
+     *
+     * @param request current HTTP request
+     * @param response current HTTP response
+     * @throws ServletException when a JSP forward or servlet operation fails
+     * @throws IOException when writing or redirecting the response fails
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -139,7 +148,12 @@ public class AdminServlet extends HttpServlet {
     }
 
     /**
-     * Routes Admin POST requests to the matching mutating action.
+     * Handles mutating Admin requests after validating Admin access and CSRF token.
+     *
+     * @param request current HTTP request
+     * @param response current HTTP response
+     * @throws ServletException when a downstream servlet operation fails
+     * @throws IOException when writing or redirecting the response fails
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -253,9 +267,12 @@ public class AdminServlet extends HttpServlet {
     }
 
     /**
-     * Ensures the current session belongs to an authenticated Admin user.
+     * Verifies that the current session belongs to an Admin user.
      *
-     * @return the operation result
+     * @param request current HTTP request
+     * @param response current HTTP response
+     * @return {@code true} when the current user is allowed to access Admin pages
+     * @throws IOException when sending a redirect or JSON error response fails
      */
     private boolean ensureAdminAccess(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
@@ -276,7 +293,11 @@ public class AdminServlet extends HttpServlet {
     }
 
     /**
-     * Returns the correct response when CSRF validation fails.
+     * Sends a consistent error response for invalid CSRF tokens.
+     *
+     * @param request current HTTP request
+     * @param response current HTTP response
+     * @throws IOException when writing or redirecting the response fails
      */
     private void handleInvalidCsrf(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (isJsonRequest(request)) {
@@ -291,9 +312,10 @@ public class AdminServlet extends HttpServlet {
     }
 
     /**
-     * Detects whether the current request expects a JSON response.
+     * Detects AJAX or JSON-oriented requests so the servlet can return JSON errors.
      *
-     * @return the operation result
+     * @param request current HTTP request
+     * @return {@code true} when the client expects a JSON response
      */
     private boolean isJsonRequest(HttpServletRequest request) {
         String requestedWith = request.getHeader("X-Requested-With");
