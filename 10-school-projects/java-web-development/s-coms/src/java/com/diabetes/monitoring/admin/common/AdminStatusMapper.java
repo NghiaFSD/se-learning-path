@@ -30,11 +30,6 @@ public final class AdminStatusMapper {
     private AdminStatusMapper() {
     }
 
-    /**
-     * Normalizes booking source values used by appointment statistics.
-     *
-     * @return the operation result
-     */
     public static String normalizeBookingSource(String raw) {
         if (raw == null || raw.isBlank()) {
             return BOOKING_ONLINE;
@@ -58,11 +53,6 @@ public final class AdminStatusMapper {
         return normalized;
     }
 
-    /**
-     * Checks whether a value is a known appointment status.
-     *
-     * @return the operation result
-     */
     public static boolean isAppointmentStatus(String status) {
         if (status == null) {
             return false;
@@ -76,11 +66,6 @@ public final class AdminStatusMapper {
                 || normalized.equalsIgnoreCase(APPOINTMENT_NO_SHOW);
     }
 
-    /**
-     * Checks whether an appointment status should count against capacity.
-     *
-     * @return the operation result
-     */
     public static boolean isCountedAppointmentStatus(String status) {
         if (status == null) {
             return false;
@@ -92,21 +77,11 @@ public final class AdminStatusMapper {
                 || normalized.equalsIgnoreCase(APPOINTMENT_COMPLETED);
     }
 
-    /**
-     * Checks whether an appointment should count against online quota.
-     *
-     * @return the operation result
-     */
     public static boolean isCountedOnlineAppointmentStatus(String status, String bookingSource) {
         return isCountedAppointmentStatus(status)
                 && BOOKING_ONLINE.equalsIgnoreCase(normalizeBookingSource(bookingSource));
     }
 
-    /**
-     * Normalizes schedule status values used by Admin screens.
-     *
-     * @return the operation result
-     */
     public static String normalizeScheduleStatus(String raw) {
         if (raw == null || raw.isBlank()) {
             return SCHEDULE_AVAILABLE;
@@ -128,9 +103,7 @@ public final class AdminStatusMapper {
     }
 
     /**
-     * Converts an appointment status to a Vietnamese display label.
-     *
-     * @return the operation result
+     * Maps appointment workflow status to a Vietnamese label for Admin screens.
      */
     public static String toVietnameseAppointmentStatus(String status) {
         if (status == null) {
@@ -157,9 +130,7 @@ public final class AdminStatusMapper {
     }
 
     /**
-     * Converts a schedule status to a Vietnamese display label.
-     *
-     * @return the operation result
+     * Maps doctor schedule status to a Vietnamese label for Admin screens.
      */
     public static String toVietnameseScheduleStatus(String status) {
         if (status == null) {

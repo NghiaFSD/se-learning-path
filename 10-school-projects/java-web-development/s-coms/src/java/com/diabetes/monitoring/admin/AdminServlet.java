@@ -17,10 +17,7 @@ import java.io.IOException;
 
 /**
  * Front controller for the Admin area.
- *
- * <p>This servlet keeps URL mapping stable at {@code /admin} and delegates
- * each action to the proper feature handler: analytics, management,
- * scheduling, or patient flow.</p>
+ * Delegates dashboard, management, scheduling, and patient-flow actions.
  */
 public class AdminServlet extends HttpServlet {
     private final AdminAnalyticsHandler analyticsHandler = new AdminAnalyticsHandler();

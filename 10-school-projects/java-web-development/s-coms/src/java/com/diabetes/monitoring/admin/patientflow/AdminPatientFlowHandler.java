@@ -35,17 +35,11 @@ public class AdminPatientFlowHandler {
      * Loads schedule appointments data for the Admin UI.
      */
     public void loadScheduleAppointments(HttpServletRequest request, HttpServletResponse response) throws IOException { appointmentHandler.loadScheduleAppointments(request, response); }
-    /**
-     * Updates appointment workflow status for the Admin module.
-     */
     public void updateAppointmentWorkflowStatus(HttpServletRequest request, HttpServletResponse response, String workflowStep) throws IOException { appointmentHandler.updateAppointmentWorkflowStatus(request, response, workflowStep); }
     /**
      * Loads exception routing data for the Admin UI.
      */
     public void loadExceptionRouting(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { emergencyRoutingHandler.loadExceptionRouting(request, response); }
-    /**
-     * Handles emergency reassign for the Admin module.
-     */
     public void emergencyReassign(HttpServletRequest request, HttpServletResponse response) throws IOException { emergencyRoutingHandler.emergencyReassign(request, response); }
 }
 
@@ -144,9 +138,6 @@ class AdminAppointmentHandler {
         }
     }
 
-    /**
-     * Updates appointment workflow status for the Admin module.
-     */
     public void updateAppointmentWorkflowStatus(HttpServletRequest request, HttpServletResponse response, String workflowStep) throws IOException {
         int appointmentId = parseInt(request.getParameter("appointmentId"), -1);
         boolean success = false;
@@ -180,11 +171,6 @@ class AdminAppointmentHandler {
         response.sendRedirect(request.getContextPath() + "/admin");
     }
 
-    /**
-     * Detects whether the current request expects a JSON response.
-     *
-     * @return the operation result
-     */
     private boolean isJsonRequest(HttpServletRequest request) {
         String ct = request.getContentType();
         String xrw = request.getHeader("X-Requested-With");
@@ -193,11 +179,6 @@ class AdminAppointmentHandler {
                 || (request.getHeader("Accept") != null && request.getHeader("Accept").toLowerCase().contains("application/json"));
     }
 
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -240,9 +221,6 @@ class AdminEmergencyRoutingHandler {
         request.getRequestDispatcher("/admin/exception-routing.jsp").forward(request, response);
     }
 
-    /**
-     * Handles emergency reassign for the Admin module.
-     */
     public void emergencyReassign(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int appointmentId = parseInt(request.getParameter("appointmentId"), -1);
         String[] targetDoctorIds = request.getParameterValues("targetDoctorId");
@@ -262,11 +240,6 @@ class AdminEmergencyRoutingHandler {
         response.sendRedirect(request.getContextPath() + "/admin?action=exception");
     }
 
-    /**
-     * Handles nullable int for the Admin module.
-     *
-     * @return the operation result
-     */
     private Integer nullableInt(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -278,11 +251,6 @@ class AdminEmergencyRoutingHandler {
         }
     }
 
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);

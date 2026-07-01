@@ -16,11 +16,6 @@ public final class AdminScheduleConstraintValidator {
     private AdminScheduleConstraintValidator() {
     }
 
-    /**
-     * Validates max patients before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateMaxPatients(int maxPatients) {
         if (maxPatients <= 0) {
             return "max_patients phải lớn hơn 0.";
@@ -31,11 +26,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Validates online quota before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateOnlineQuota(Integer onlineQuota, int maxPatients) {
         if (onlineQuota == null) {
             return null;
@@ -49,11 +39,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Validates time slot before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateTimeSlot(String timeSlot) {
         String normalized = normalizeTimeSlot(timeSlot);
         if (normalized == null) {
@@ -62,11 +47,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Normalizes time slot for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     public static String normalizeTimeSlot(String timeSlot) {
         if (timeSlot == null || timeSlot.isBlank()) {
             return null;
@@ -88,11 +68,6 @@ public final class AdminScheduleConstraintValidator {
         }
     }
 
-    /**
-     * Validates doctor daily limit before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateDoctorDailyLimit(int scheduleCountForDay) {
         if (scheduleCountForDay >= 2) {
             return "Bác sĩ không thể có quá 2 ca trong một ngày.";
@@ -100,11 +75,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Validates no duplicate schedule before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateNoDuplicateSchedule(boolean duplicateExists) {
         if (duplicateExists) {
             return "Bác sĩ đã có lịch trực cùng ngày và cùng ca.";
@@ -112,11 +82,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Validates no overlap before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateNoOverlap(boolean overlapExists) {
         if (overlapExists) {
             return "Bác sĩ đã có ca trực trùng thời gian trong ngày.";
@@ -124,11 +89,6 @@ public final class AdminScheduleConstraintValidator {
         return null;
     }
 
-    /**
-     * Validates schedule input before Admin processing continues.
-     *
-     * @return the operation result
-     */
     public static String validateScheduleInput(int maxPatients, Integer onlineQuota, String timeSlot) {
         String message = validateMaxPatients(maxPatients);
         if (message != null) {

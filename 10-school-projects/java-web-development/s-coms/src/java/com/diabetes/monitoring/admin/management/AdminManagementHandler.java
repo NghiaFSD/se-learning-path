@@ -16,59 +16,18 @@ import java.util.Map;
 public class AdminManagementHandler {
     private final AdminAccountHandler accountHandler = new AdminAccountHandler();
     private final AdminMedicalServiceHandler medicalServiceHandler = new AdminMedicalServiceHandler();
-
-    /**
-     * Loads accounts data for the Admin UI.
-     */
     public void loadAccounts(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { accountHandler.loadAccounts(request, response); }
-    /**
-     * Creates account for the Admin module.
-     */
     public void createAccount(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.createAccount(request, response); }
-    /**
-     * Updates account role for the Admin module.
-     */
     public void updateAccountRole(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.updateAccountRole(request, response); }
-    /**
-     * Updates account status for the Admin module.
-     */
     public void updateAccountStatus(HttpServletRequest request, HttpServletResponse response, String targetStatus) throws IOException { accountHandler.updateAccountStatus(request, response, targetStatus); }
-    /**
-     * Deletes account for the Admin module.
-     */
     public void deleteAccount(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.deleteAccount(request, response); }
-    /**
-     * Updates account profile for the Admin module.
-     */
     public void updateAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.updateAccountProfile(request, response); }
-    /**
-     * Handles ajax toggle account status for the Admin module.
-     */
     public void ajaxToggleAccountStatus(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.ajaxToggleAccountStatus(request, response); }
-    /**
-     * Loads account profile data for the Admin UI.
-     */
     public void loadAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException { accountHandler.loadAccountProfile(request, response); }
-
-    /**
-     * Loads services data for the Admin UI.
-     */
     public void loadServices(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { medicalServiceHandler.loadServices(request, response); }
-    /**
-     * Creates service for the Admin module.
-     */
     public void createService(HttpServletRequest request, HttpServletResponse response) throws IOException { medicalServiceHandler.createService(request, response); }
-    /**
-     * Updates service for the Admin module.
-     */
     public void updateService(HttpServletRequest request, HttpServletResponse response) throws IOException { medicalServiceHandler.updateService(request, response); }
-    /**
-     * Updates service status for the Admin module.
-     */
     public void updateServiceStatus(HttpServletRequest request, HttpServletResponse response) throws IOException { medicalServiceHandler.updateServiceStatus(request, response); }
-    /**
-     * Deletes service for the Admin module.
-     */
     public void deleteService(HttpServletRequest request, HttpServletResponse response) throws IOException { medicalServiceHandler.deleteService(request, response); }
 }
 
@@ -77,10 +36,6 @@ public class AdminManagementHandler {
  */
 class AdminAccountHandler {
     private final AdminAccountService accountService = new AdminAccountService();
-
-    /**
-     * Loads accounts data for the Admin UI.
-     */
     public void loadAccounts(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String search = request.getParameter("search");
         String role = request.getParameter("role");
@@ -88,10 +43,6 @@ class AdminAccountHandler {
         request.setAttribute("users", accountService.loadAccounts(search, role, status));
         request.getRequestDispatcher("/admin/users.jsp").forward(request, response);
     }
-
-    /**
-     * Creates account for the Admin module.
-     */
     public void createAccount(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String fullName = request.getParameter("fullName");
         String email = request.getParameter("email");
@@ -116,10 +67,6 @@ class AdminAccountHandler {
                 created ? "Đã tạo tài khoản thành công" : "Không thể tạo tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
-
-    /**
-     * Updates account role for the Admin module.
-     */
     public void updateAccountRole(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int accountId = parseInt(request.getParameter("accountId"), -1);
         String role = request.getParameter("role");
@@ -128,10 +75,6 @@ class AdminAccountHandler {
                 ok ? "Đã cập nhật phân quyền tài khoản" : "Không thể cập nhật phân quyền");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
-
-    /**
-     * Updates account status for the Admin module.
-     */
     public void updateAccountStatus(HttpServletRequest request, HttpServletResponse response, String targetStatus) throws IOException {
         int accountId = parseInt(request.getParameter("accountId"), -1);
         boolean ok = accountId > 0 && accountService.updateAccountStatus(accountId, targetStatus);
@@ -140,10 +83,6 @@ class AdminAccountHandler {
                         : "Không thể cập nhật trạng thái tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
-
-    /**
-     * Deletes account for the Admin module.
-     */
     public void deleteAccount(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int accountId = parseInt(request.getParameter("accountId"), -1);
         boolean ok = accountId > 0 && accountService.deleteAccount(accountId);
@@ -151,10 +90,6 @@ class AdminAccountHandler {
                 ok ? "Đã xóa tài khoản" : "Không thể xóa tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
-
-    /**
-     * Updates account profile for the Admin module.
-     */
     public void updateAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int accountId = parseInt(request.getParameter("accountId"), -1);
         String fullName = request.getParameter("fullName");
@@ -168,10 +103,6 @@ class AdminAccountHandler {
                 ok ? "Đã cập nhật hồ sơ tài khoản" : "Không thể cập nhật hồ sơ tài khoản");
         response.sendRedirect(request.getContextPath() + "/admin?action=listUsers");
     }
-
-    /**
-     * Handles ajax toggle account status for the Admin module.
-     */
     public void ajaxToggleAccountStatus(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int accountId = parseInt(request.getParameter("accountId"), -1);
         String status = request.getParameter("status");
@@ -188,10 +119,6 @@ class AdminAccountHandler {
             out.print("}");
         }
     }
-
-    /**
-     * Loads account profile data for the Admin UI.
-     */
     public void loadAccountProfile(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         int accountId = parseInt(request.getParameter("accountId"), -1);
@@ -213,24 +140,12 @@ class AdminAccountHandler {
             out.print("}}");
         }
     }
-
-    /**
-     * Handles is allowed role for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean isAllowedRole(String role) {
         return role != null && ("admin".equalsIgnoreCase(role)
                 || "receptionist".equalsIgnoreCase(role)
                 || "doctor".equalsIgnoreCase(role)
                 || "patient".equalsIgnoreCase(role));
     }
-
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -238,12 +153,6 @@ class AdminAccountHandler {
             return fallback;
         }
     }
-
-    /**
-     * Handles escape for the Admin module.
-     *
-     * @return the operation result
-     */
     private String escape(String value) {
         if (value == null) {
             return "";
@@ -257,10 +166,6 @@ class AdminAccountHandler {
  */
 class AdminMedicalServiceHandler {
     private final AdminMedicalServiceService medicalServiceService = new AdminMedicalServiceService();
-
-    /**
-     * Loads services data for the Admin UI.
-     */
     public void loadServices(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String search = request.getParameter("search");
         String serviceType = request.getParameter("serviceType");
@@ -268,10 +173,6 @@ class AdminMedicalServiceHandler {
         request.setAttribute("services", medicalServiceService.loadServices(search, serviceType, status));
         request.getRequestDispatcher("/admin/services.jsp").forward(request, response);
     }
-
-    /**
-     * Creates service for the Admin module.
-     */
     public void createService(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String serviceName = request.getParameter("serviceName");
         String serviceType = request.getParameter("serviceType");
@@ -283,10 +184,6 @@ class AdminMedicalServiceHandler {
                 ok ? "Đã thêm dịch vụ y tế" : "Không thể thêm dịch vụ y tế");
         response.sendRedirect(request.getContextPath() + "/admin?action=manageServices");
     }
-
-    /**
-     * Updates service for the Admin module.
-     */
     public void updateService(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int serviceId = parseInt(request.getParameter("serviceId"), -1);
         String serviceName = request.getParameter("serviceName");
@@ -299,10 +196,6 @@ class AdminMedicalServiceHandler {
                 ok ? "Đã cập nhật dịch vụ y tế" : "Không thể cập nhật dịch vụ y tế");
         response.sendRedirect(request.getContextPath() + "/admin?action=manageServices");
     }
-
-    /**
-     * Updates service status for the Admin module.
-     */
     public void updateServiceStatus(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int serviceId = parseInt(request.getParameter("serviceId"), -1);
         String status = request.getParameter("status");
@@ -311,10 +204,6 @@ class AdminMedicalServiceHandler {
                 ok ? "Đã cập nhật trạng thái dịch vụ" : "Không thể cập nhật trạng thái dịch vụ");
         response.sendRedirect(request.getContextPath() + "/admin?action=manageServices");
     }
-
-    /**
-     * Deletes service for the Admin module.
-     */
     public void deleteService(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int serviceId = parseInt(request.getParameter("serviceId"), -1);
         boolean ok = serviceId > 0 && medicalServiceService.deleteService(serviceId);
@@ -322,12 +211,6 @@ class AdminMedicalServiceHandler {
                 ok ? "Đã xóa dịch vụ y tế" : "Không thể xóa dịch vụ y tế");
         response.sendRedirect(request.getContextPath() + "/admin?action=manageServices");
     }
-
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -335,12 +218,6 @@ class AdminMedicalServiceHandler {
             return fallback;
         }
     }
-
-    /**
-     * Handles parse big decimal for the Admin module.
-     *
-     * @return the operation result
-     */
     private BigDecimal parseBigDecimal(String raw) {
         try {
             return raw == null || raw.isBlank() ? BigDecimal.ZERO : new BigDecimal(raw);

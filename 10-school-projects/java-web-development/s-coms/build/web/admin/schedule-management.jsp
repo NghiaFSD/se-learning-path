@@ -450,7 +450,7 @@
                             <c:forEach var="s" items="${schedules}">
                                 <c:set var="bookedAppointments" value="${empty s.bookedAppointments ? 0 : s.bookedAppointments}" />
                                 <c:set var="activeAppointments" value="${empty s.activeAppointments ? 0 : s.activeAppointments}" />
-                                <c:set var="onlineQuota" value="${empty s.onlineQuota ? s.maxPatients : s.onlineQuota}" />
+                                <c:set var="onlineQuota" value="${empty s.onlineQuota ? 0 : s.onlineQuota}" />
                                 <c:set var="onlineBookedCount" value="${empty s.onlineBookedCount ? 0 : s.onlineBookedCount}" />
                                 <c:set var="reservedSlots" value="${empty s.reservedSlots ? (s.maxPatients - onlineQuota) : s.reservedSlots}" />
                                 <c:set var="loadPct" value="${s.maxPatients > 0 ? (bookedAppointments * 100.0 / s.maxPatients) : 0}" />
@@ -469,13 +469,16 @@
                                     <td>${s.timeSlot}</td>
                                     <td>
                                         <div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">${bookedAppointments} / ${s.maxPatients}</div>
-                                        <small class="text-muted d-block text-center mt-1">Đang chờ/khám: ${activeAppointments}</small>
+                                        <small class="text-muted d-block text-center mt-1">Đã check-in/đang khám: ${activeAppointments}</small>
                                         <small class="text-muted d-block text-center">Dự phòng: ${reservedSlots} slot</small>
                                     </td>
                                     <td class="text-center">
                                         <div class="fw-semibold">${onlineBookedCount} / ${onlineQuota}</div>
                                         <small class="text-muted d-block">Slot online</small>
                                         <c:choose>
+                                            <c:when test="${onlineBookedCount gt onlineQuota}">
+                                                <span class="badge text-bg-danger mt-1">Vượt quota online</span>
+                                            </c:when>
                                             <c:when test="${onlineBookedCount ge onlineQuota and onlineQuota ge 0}">
                                                 <span class="badge text-bg-warning mt-1">Hết slot online</span>
                                             </c:when>
@@ -1021,15 +1024,22 @@
                             if (row) {
                                 row.querySelector('td:nth-child(4)').textContent = payload.timeSlot;
                                 row.setAttribute('data-max-patients', payload.maxPatients);
-                                row.setAttribute('data-online-quota', payload.onlineQuota || '');
+                                const resolvedOnlineQuota = payload.onlineQuota
+                                    ? Number(payload.onlineQuota)
+                                    : calculateDefaultOnlineQuota(Number(payload.maxPatients || 0));
+                                const reservedSlots = Math.max(0, Number(payload.maxPatients || 0) - resolvedOnlineQuota);
+                                row.setAttribute('data-online-quota', resolvedOnlineQuota);
+                                row.setAttribute('data-reserved-slots', reservedSlots);
                                 row.querySelector('td:nth-child(5) div').textContent = (row.dataset.bookedAppointments || 0) + ' / ' + payload.maxPatients;
-                                const onlineQuota = Number(payload.onlineQuota || row.dataset.onlineQuota || 0);
+                                const reserveText = row.querySelector('td:nth-child(5) small:nth-of-type(2)');
+                                if (reserveText) reserveText.textContent = 'Dự phòng: ' + reservedSlots + ' slot';
+                                const onlineQuota = Number(row.dataset.onlineQuota || 0);
                                 const onlineBooked = Number(row.dataset.onlineBookedCount || 0);
                                 const quotaCell = row.querySelector('td:nth-child(6)');
                                 if (quotaCell) {
                                     quotaCell.innerHTML = '<div class="fw-semibold">' + onlineBooked + ' / ' + onlineQuota + '</div>'
                                         + '<small class="text-muted d-block">Slot online</small>'
-                                        + (onlineBooked >= onlineQuota ? '<span class="badge text-bg-warning mt-1">Hết slot online</span>' : '<span class="badge text-bg-success mt-1">Còn slot online</span>');
+                                        + getOnlineQuotaBadge(onlineBooked, onlineQuota);
                                 }
                                 // update status badge
                                 const statusCell = row.querySelector('td:nth-child(8)');
@@ -1251,6 +1261,13 @@
                                                               const activeAppointments = Number(schedule.activeAppointments || 0);
                                                               const bookedAppointments = Number(schedule.bookedAppointments || schedule.bookedCount || activeAppointments || 0);
                                                               const loadPct = maxPatients > 0 ? Math.round((bookedAppointments * 100) / maxPatients) : 0;
+                                                              const onlineQuota = schedule.onlineQuota !== undefined && schedule.onlineQuota !== null
+                                                                      ? Number(schedule.onlineQuota)
+                                                                      : calculateDefaultOnlineQuota(maxPatients);
+                                                              const onlineBookedCount = Number(schedule.onlineBookedCount || 0);
+                                                              const reservedSlots = schedule.reservedSlots !== undefined && schedule.reservedSlots !== null
+                                                                      ? Number(schedule.reservedSlots)
+                                                                      : Math.max(0, maxPatients - onlineQuota);
 
                                                               const departmentMap = {
                                                                   Endocrinology: 'Nội tiết - Tiểu đường',
@@ -1292,7 +1309,9 @@
 
                                                               return '<tr class="ai-generated-row" data-schedule-id="' + (schedule.scheduleId || '') + '" data-doctor-name="' + escapeHtmlForSchedule(schedule.doctorName)
                                                                       + '" data-department="' + escapeHtmlForSchedule(schedule.department || '')
-                                                                      + '" data-load-pct="' + loadPct + '" data-active-appointments="' + activeAppointments + '" data-booked-appointments="' + bookedAppointments + '" data-max-patients="' + maxPatients + '">'
+                                                                      + '" data-load-pct="' + loadPct + '" data-active-appointments="' + activeAppointments + '" data-booked-appointments="' + bookedAppointments
+                                                                      + '" data-online-booked-count="' + onlineBookedCount + '" data-max-patients="' + maxPatients
+                                                                      + '" data-online-quota="' + onlineQuota + '" data-reserved-slots="' + reservedSlots + '">'
 
                                                                       + '<td><span class="fw-semibold">' + escapeHtmlForSchedule(schedule.doctorName)
                                                                       + '</span><div class="small text-purple"><i class="fa-solid ' + sourceIcon + ' me-1"></i>'
@@ -1306,7 +1325,14 @@
 
                                                                       + '<td><div style="background-color: #f0f8f4; padding: 6px 10px; border-radius: 4px; font-weight: 500; text-align: center;">'
                                                                       + bookedAppointments + ' / ' + maxPatients + '</div>'
-                                                                      + '<small class="text-muted d-block text-center mt-1">Đang chờ/khám: ' + activeAppointments + '</small></td>'
+                                                                      + '<small class="text-muted d-block text-center mt-1">Đã check-in/đang khám: ' + activeAppointments + '</small>'
+                                                                      + '<small class="text-muted d-block text-center">Dự phòng: ' + reservedSlots + ' slot</small></td>'
+
+                                                                      + '<td class="text-center">'
+                                                                      + '<div class="fw-semibold">' + onlineBookedCount + ' / ' + onlineQuota + '</div>'
+                                                                      + '<small class="text-muted d-block">Slot online</small>'
+                                                                      + getOnlineQuotaBadge(onlineBookedCount, onlineQuota)
+                                                                      + '</td>'
 
                                                                       + '<td class="schedule-load-cell">'
                                                                       + '<div class="schedule-load-wrap" title="' + (loadPct >= 100 ? 'Quá tải' : (loadPct >= 80 ? 'Cận đầy' : 'Bình thường')) + '">'
@@ -1330,7 +1356,7 @@
                                                               if (!tbody || !Array.isArray(schedules) || schedules.length === 0) {
                                                                   return;
                                                               }
-                                                              const emptyRow = tbody.querySelector('td[colspan="8"]');
+                                                              const emptyRow = tbody.querySelector('td[colspan="9"]');
                                                               if (emptyRow) {
                                                                   emptyRow.closest('tr').remove();
                                                               }
@@ -1619,7 +1645,7 @@
             
             function getStatusBadge(status) {
                 const statusMap = {
-                    'Waiting': '<span class="badge text-bg-warning"><i class="bi bi-hourglass-split me-1"></i>Chờ đợi</span>',
+                    'Waiting': '<span class="badge text-bg-warning"><i class="bi bi-calendar-check me-1"></i>Đã đặt lịch</span>',
                     'Checked_In': '<span class="badge text-bg-primary"><i class="bi bi-person-check me-1"></i>Đã check-in</span>',
                     'In_Progress': '<span class="badge text-bg-info"><i class="bi bi-play-circle me-1"></i>Đang khám</span>',
                     'Completed': '<span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Hoàn tất</span>',
@@ -1627,6 +1653,27 @@
                     'Cancelled': '<span class="badge text-bg-danger"><i class="bi bi-trash me-1"></i>Đã hủy</span>'
                 };
                 return statusMap[status] || '<span class="badge text-bg-secondary">' + (status || 'Không xác định') + '</span>';
+            }
+
+            function calculateDefaultOnlineQuota(maxPatients) {
+                if (maxPatients <= 1) {
+                    return Math.max(0, maxPatients);
+                }
+                let quota = Math.ceil(maxPatients * 0.6);
+                if (quota >= maxPatients) {
+                    quota = maxPatients - 1;
+                }
+                return Math.max(1, quota);
+            }
+
+            function getOnlineQuotaBadge(onlineBooked, onlineQuota) {
+                if (onlineBooked > onlineQuota) {
+                    return '<span class="badge text-bg-danger mt-1">Vượt quota online</span>';
+                }
+                if (onlineBooked >= onlineQuota) {
+                    return '<span class="badge text-bg-warning mt-1">Hết slot online</span>';
+                }
+                return '<span class="badge text-bg-success mt-1">Còn slot online</span>';
             }
 
             function getBookingSourceBadge(source) {

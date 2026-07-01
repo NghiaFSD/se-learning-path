@@ -22,42 +22,14 @@ import java.util.Map;
 public class AdminSchedulingHandler {
     private final AdminScheduleHandler scheduleHandler = new AdminScheduleHandler();
     private final AdminAiSchedulingHandler aiSchedulingHandler = new AdminAiSchedulingHandler();
-
-    /**
-     * Loads schedules data for the Admin UI.
-     */
     public void loadSchedules(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException { scheduleHandler.loadSchedules(request, response); }
-    /**
-     * Creates schedule for the Admin module.
-     */
     public void createSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.createSchedule(request, response); }
-    /**
-     * Updates schedule for the Admin module.
-     */
     public void updateSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.updateSchedule(request, response); }
-    /**
-     * Deletes schedule for the Admin module.
-     */
     public void deleteSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.deleteSchedule(request, response); }
-    /**
-     * Handles cancel schedule for the Admin module.
-     */
     public void cancelSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.cancelSchedule(request, response); }
-    /**
-     * Handles transfer schedule for the Admin module.
-     */
     public void transferSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.transferSchedule(request, response); }
-    /**
-     * Loads transfer candidates data for the Admin UI.
-     */
     public void loadTransferCandidates(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.loadTransferCandidates(request, response); }
-    /**
-     * Loads schedule detail data for the Admin UI.
-     */
     public void loadScheduleDetail(HttpServletRequest request, HttpServletResponse response) throws IOException { scheduleHandler.loadScheduleDetail(request, response); }
-    /**
-     * Handles ai create schedules for the Admin module.
-     */
     public void aiCreateSchedules(HttpServletRequest request, HttpServletResponse response) throws IOException { aiSchedulingHandler.aiCreateSchedules(request, response); }
 }
 
@@ -66,10 +38,6 @@ public class AdminSchedulingHandler {
  */
 class AdminScheduleHandler {
     private final AdminScheduleService scheduleService = new AdminScheduleService();
-
-    /**
-     * Loads schedules data for the Admin UI.
-     */
     public void loadSchedules(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         scheduleService.prepareScheduleViews();
 
@@ -124,10 +92,6 @@ class AdminScheduleHandler {
         request.setAttribute("schedules", rawSchedules);
         request.getRequestDispatcher("/admin/schedule-management.jsp").forward(request, response);
     }
-
-    /**
-     * Creates schedule for the Admin module.
-     */
     public void createSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int doctorId = parseInt(request.getParameter("doctorId"), -1);
         Date workDate = nullableDate(request.getParameter("workDate"));
@@ -143,29 +107,22 @@ class AdminScheduleHandler {
                         : (daoMessage == null || daoMessage.isBlank() ? "Không thể tạo ca trực" : daoMessage));
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
     }
-
-    /**
-     * Updates schedule for the Admin module.
-     */
     public void updateSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
         int doctorId = parseInt(request.getParameter("doctorId"), -1);
         String timeSlot = request.getParameter("timeSlot");
         int maxPatients = parseInt(request.getParameter("maxPatients"), 0);
+        int onlineQuota = parseInt(request.getParameter("onlineQuota"), -1);
         String status = request.getParameter("status");
 
         boolean ok = scheduleId > 0 && doctorId > 0
-                && scheduleService.updateSchedule(scheduleId, doctorId, timeSlot, maxPatients, status);
+                && scheduleService.updateSchedule(scheduleId, doctorId, timeSlot, maxPatients, onlineQuota >= 0 ? onlineQuota : null, status);
         String daoMessage = scheduleService.consumeValidationMessage();
         request.getSession().setAttribute(ok ? "successMessage" : "errorMessage",
                 ok ? "Đã cập nhật ca trực"
                         : (daoMessage == null || daoMessage.isBlank() ? "Không thể cập nhật ca trực" : daoMessage));
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
     }
-
-    /**
-     * Deletes schedule for the Admin module.
-     */
     public void deleteSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
         boolean ok = scheduleId > 0 && scheduleService.deleteSchedule(scheduleId);
@@ -173,10 +130,6 @@ class AdminScheduleHandler {
                 ok ? "Đã xóa lịch trực" : "Không thể xóa lịch trực");
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
     }
-
-    /**
-     * Handles cancel schedule for the Admin module.
-     */
     public void cancelSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
         boolean ok = scheduleId > 0 && scheduleService.cancelSchedule(scheduleId);
@@ -186,10 +139,6 @@ class AdminScheduleHandler {
                         : (daoMessage == null || daoMessage.isBlank() ? "Không thể hủy ca trực" : daoMessage));
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
     }
-
-    /**
-     * Handles transfer schedule for the Admin module.
-     */
     public void transferSchedule(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
         int targetDoctorId = parseInt(request.getParameter("targetDoctorId"), -1);
@@ -231,10 +180,6 @@ class AdminScheduleHandler {
                         : (daoMessage == null || daoMessage.isBlank() ? "Không thể chuyển giao ca trực" : daoMessage));
         response.sendRedirect(request.getContextPath() + "/admin?action=schedule");
     }
-
-    /**
-     * Loads transfer candidates data for the Admin UI.
-     */
     public void loadTransferCandidates(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
@@ -285,10 +230,6 @@ class AdminScheduleHandler {
             }
         }
     }
-
-    /**
-     * Loads schedule detail data for the Admin UI.
-     */
     public void loadScheduleDetail(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         int scheduleId = parseInt(request.getParameter("scheduleId"), -1);
@@ -355,12 +296,6 @@ class AdminScheduleHandler {
             }
         }
     }
-
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -368,12 +303,6 @@ class AdminScheduleHandler {
             return fallback;
         }
     }
-
-    /**
-     * Handles nullable date for the Admin module.
-     *
-     * @return the operation result
-     */
     private Date nullableDate(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -384,12 +313,6 @@ class AdminScheduleHandler {
             return null;
         }
     }
-
-    /**
-     * Handles escape for the Admin module.
-     *
-     * @return the operation result
-     */
     private String escape(String value) {
         if (value == null) {
             return "";
@@ -403,10 +326,6 @@ class AdminScheduleHandler {
  */
 class AdminAiSchedulingHandler {
     private final AdminAiSchedulingService aiSchedulingService = new AdminAiSchedulingService();
-
-    /**
-     * Handles ai create schedules for the Admin module.
-     */
     public void aiCreateSchedules(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("application/json;charset=UTF-8");
         try {
@@ -439,10 +358,6 @@ class AdminAiSchedulingHandler {
             writeAiScheduleError(response, "Không thể xử lý lịch AI: " + (error.getMessage() == null ? "Lỗi dữ liệu không xác định." : error.getMessage()));
         }
     }
-
-    /**
-     * Handles write ai schedule error for the Admin module.
-     */
     private void writeAiScheduleError(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_OK);
         try (PrintWriter out = response.getWriter()) {
@@ -451,12 +366,6 @@ class AdminAiSchedulingHandler {
             out.print("\",\"items\":[]}");
         }
     }
-
-    /**
-     * Handles parse shift templates for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Map<String, String>> parseShiftTemplates(String rawTemplates) {
         List<Map<String, String>> shifts = new ArrayList<>();
         if (rawTemplates == null || rawTemplates.isBlank()) {
@@ -483,12 +392,6 @@ class AdminAiSchedulingHandler {
         }
         return shifts;
     }
-
-    /**
-     * Handles parse selected weekdays for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Integer> parseSelectedWeekdays(String[] values) {
         List<Integer> weekdays = new ArrayList<>();
         if (values == null) {
@@ -502,12 +405,6 @@ class AdminAiSchedulingHandler {
         }
         return weekdays;
     }
-
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -515,12 +412,6 @@ class AdminAiSchedulingHandler {
             return fallback;
         }
     }
-
-    /**
-     * Handles nullable date for the Admin module.
-     *
-     * @return the operation result
-     */
     private Date nullableDate(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -532,3 +423,4 @@ class AdminAiSchedulingHandler {
         }
     }
 }
+

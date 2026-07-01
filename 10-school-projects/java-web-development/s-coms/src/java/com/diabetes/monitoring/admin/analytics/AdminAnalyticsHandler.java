@@ -237,11 +237,6 @@ class AdminDashboardHandler {
         }
     }
 
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     private int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -378,11 +373,6 @@ class AdminReportHandler {
         }
     }
 
-    /**
-     * Serializes series to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     private String toJsonSeries(List<ReportSeriesDTO> series) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < series.size(); i++) {
@@ -400,11 +390,6 @@ class AdminReportHandler {
         return sb.toString();
     }
 
-    /**
-     * Handles nullable int for the Admin module.
-     *
-     * @return the operation result
-     */
     private Integer nullableInt(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -416,11 +401,6 @@ class AdminReportHandler {
         }
     }
 
-    /**
-     * Handles cast list for the Admin module.
-     *
-     * @return the operation result
-     */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> castList(Object value) {
         if (value instanceof List<?>) {

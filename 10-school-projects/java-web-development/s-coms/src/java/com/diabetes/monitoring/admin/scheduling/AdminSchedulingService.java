@@ -18,99 +18,21 @@ import java.util.Map;
 public class AdminSchedulingService {
     private final AdminScheduleService scheduleService = new AdminScheduleService();
     private final AdminAiSchedulingService aiSchedulingService = new AdminAiSchedulingService();
-
-    /**
-     * Handles prepare schedule views for the Admin module.
-     */
     public void prepareScheduleViews() { scheduleService.prepareScheduleViews(); }
-    /**
-     * Gets doctors for schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorsForSchedule() { return scheduleService.getDoctorsForSchedule(); }
-    /**
-     * Gets schedule departments for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<String> getScheduleDepartments() { return scheduleService.getScheduleDepartments(); }
-    /**
-     * Gets doctor schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorSchedules(String department, String doctorName, Date workDate) { return scheduleService.getDoctorSchedules(department, doctorName, workDate); }
-    /**
-     * Gets doctor schedule by id for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getDoctorScheduleById(int scheduleId) { return scheduleService.getDoctorScheduleById(scheduleId); }
-    /**
-     * Gets appointments by schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAppointmentsBySchedule(int scheduleId) { return scheduleService.getAppointmentsBySchedule(scheduleId); }
-    /**
-     * Creates schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createSchedule(int doctorId, Date workDate, String timeSlot, int maxPatients, Integer onlineQuota) { return scheduleService.createSchedule(doctorId, workDate, timeSlot, maxPatients, onlineQuota); }
-    /**
-     * Updates schedule for the Admin module.
-     *
-     * @return the operation result
-     */
-    public boolean updateSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, String status) { return scheduleService.updateSchedule(scheduleId, doctorId, timeSlot, maxPatients, status); }
-    /**
-     * Deletes schedule for the Admin module.
-     *
-     * @return the operation result
-     */
+    public boolean updateSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, Integer onlineQuota, String status) { return scheduleService.updateSchedule(scheduleId, doctorId, timeSlot, maxPatients, onlineQuota, status); }
     public boolean deleteSchedule(int scheduleId) { return scheduleService.deleteSchedule(scheduleId); }
-    /**
-     * Handles cancel schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean cancelSchedule(int scheduleId) { return scheduleService.cancelSchedule(scheduleId); }
-    /**
-     * Handles transfer schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean transferSchedule(int scheduleId, int targetDoctorId) { return scheduleService.transferSchedule(scheduleId, targetDoctorId); }
-    /**
-     * Handles auto advance appointment workflow demo for the Admin module.
-     */
     public void autoAdvanceAppointmentWorkflowDemo() { scheduleService.autoAdvanceAppointmentWorkflowDemo(); }
-    /**
-     * Handles consume validation message for the Admin module.
-     *
-     * @return the operation result
-     */
     public String consumeValidationMessage() { return scheduleService.consumeValidationMessage(); }
-    /**
-     * Gets available doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAvailableDoctorsForEmergency(String department, Integer excludeDoctorId) { return scheduleService.getAvailableDoctorsForEmergency(department, excludeDoctorId); }
-    /**
-     * Gets all active doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAllActiveDoctorsForEmergency(Integer excludeDoctorId) { return scheduleService.getAllActiveDoctorsForEmergency(excludeDoctorId); }
-
-    /**
-     * Creates schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public AdminAiSchedulingService.AiSchedulingResult createSchedules(AdminAiSchedulingService.AiSchedulingRequest request) { return aiSchedulingService.createSchedules(request); }
 }
 
@@ -119,142 +41,52 @@ public class AdminSchedulingService {
  */
 class AdminScheduleService {
     private final AdminScheduleDAO scheduleDAO = new AdminScheduleDAO();
-
-    /**
-     * Handles prepare schedule views for the Admin module.
-     */
     public void prepareScheduleViews() {
         scheduleDAO.markLateWaitingAppointmentsAsNoShow();
         scheduleDAO.refreshDoctorScheduleStatusFromAppointments();
     }
-
-    /**
-     * Gets doctors for schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorsForSchedule() {
         return scheduleDAO.getDoctorsForSchedule();
     }
-
-    /**
-     * Gets schedule departments for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<String> getScheduleDepartments() {
         return scheduleDAO.getScheduleDepartments();
     }
-
-    /**
-     * Gets doctor schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorSchedules(String department, String doctorName, Date workDate) {
         return scheduleDAO.getDoctorSchedules(department, doctorName, workDate);
     }
-
-    /**
-     * Gets doctor schedule by id for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getDoctorScheduleById(int scheduleId) {
         return scheduleDAO.getDoctorScheduleById(scheduleId);
     }
-
-    /**
-     * Gets appointments by schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAppointmentsBySchedule(int scheduleId) {
         return scheduleDAO.getAppointmentsBySchedule(scheduleId);
     }
-
-    /**
-     * Creates schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createSchedule(int doctorId, Date workDate, String timeSlot, int maxPatients, Integer onlineQuota) {
         return scheduleDAO.createDoctorSchedule(doctorId, workDate, timeSlot, maxPatients, onlineQuota, "Available");
     }
-
-    /**
-     * Updates schedule for the Admin module.
-     *
-     * @return the operation result
-     */
-    public boolean updateSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, String status) {
-        return scheduleDAO.updateDoctorSchedule(scheduleId, doctorId, timeSlot, maxPatients, status);
+    public boolean updateSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, Integer onlineQuota, String status) {
+        return scheduleDAO.updateDoctorSchedule(scheduleId, doctorId, timeSlot, maxPatients, onlineQuota, status);
     }
-
-    /**
-     * Deletes schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean deleteSchedule(int scheduleId) {
         return scheduleDAO.deleteDoctorSchedule(scheduleId);
     }
-
-    /**
-     * Handles cancel schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean cancelSchedule(int scheduleId) {
         return scheduleDAO.cancelDoctorSchedule(scheduleId);
     }
-
-    /**
-     * Handles transfer schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean transferSchedule(int scheduleId, int targetDoctorId) {
         return scheduleDAO.transferDoctorSchedule(scheduleId, targetDoctorId);
     }
-
-    /**
-     * Handles consume validation message for the Admin module.
-     *
-     * @return the operation result
-     */
     public String consumeValidationMessage() {
         return scheduleDAO.consumeScheduleValidationMessage();
     }
-
-    /**
-     * Gets available doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAvailableDoctorsForEmergency(String department, Integer excludeDoctorId) {
         return scheduleDAO.getAvailableDoctorsForEmergency(department, excludeDoctorId);
     }
-
-    /**
-     * Gets all active doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAllActiveDoctorsForEmergency(Integer excludeDoctorId) {
         return scheduleDAO.getAllActiveDoctorsForEmergency(excludeDoctorId);
     }
-
-    /**
-     * Normalizes future completed appointments for consistent Admin processing.
-     */
     public void normalizeFutureCompletedAppointments() {
         scheduleDAO.normalizeFutureCompletedAppointments();
     }
-
-    /**
-     * Handles auto advance appointment workflow demo for the Admin module.
-     */
     public void autoAdvanceAppointmentWorkflowDemo() {
         scheduleDAO.autoAdvanceAppointmentWorkflowDemo();
     }
@@ -266,12 +98,6 @@ class AdminScheduleService {
 class AdminAiSchedulingService {
     private final AdminAiSchedulingDAO aiSchedulingDAO = new AdminAiSchedulingDAO();
     private final GeminiSchedulingService geminiSchedulingService = new GeminiSchedulingService();
-
-    /**
-     * Creates schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public AiSchedulingResult createSchedules(AiSchedulingRequest request) {
         AiSchedulingResult result = new AiSchedulingResult();
         Date startDate = request.startDate;
@@ -347,12 +173,6 @@ class AdminAiSchedulingService {
         }
         return result;
     }
-
-    /**
-     * Handles build default shift templates for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Map<String, String>> buildDefaultShiftTemplates(String rawStartTime, String rawEndTime, int slotMinutes, String department) {
         List<Map<String, String>> shifts = new ArrayList<>();
         String resolvedDepartment = (department == null || department.isBlank()) ? "Endocrinology" : department;
@@ -364,12 +184,6 @@ class AdminAiSchedulingService {
         }
         return shifts;
     }
-
-    /**
-     * Handles expand shifts for doctors per slot for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Map<String, String>> expandShiftsForDoctorsPerSlot(List<Map<String, String>> baseShifts, int doctorsPerShift) {
         List<Map<String, String>> expanded = new ArrayList<>();
         int multiplier = Math.min(4, Math.max(1, doctorsPerShift));
@@ -383,12 +197,6 @@ class AdminAiSchedulingService {
         }
         return expanded;
     }
-
-    /**
-     * Handles build schedule time slots for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<String> buildScheduleTimeSlots(String rawStartTime, String rawEndTime, int slotMinutes) {
         List<String> slots = new ArrayList<>();
         if (slotMinutes < 30 || slotMinutes > 480) {
@@ -412,12 +220,6 @@ class AdminAiSchedulingService {
         }
         return slots;
     }
-
-    /**
-     * Handles build selected target dates for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Date> buildSelectedTargetDates(Date startDate, Date endDate, List<Integer> selectedWeekdays) {
         List<Date> dates = new ArrayList<>();
         if (startDate == null || endDate == null || startDate.after(endDate) || selectedWeekdays == null || selectedWeekdays.isEmpty()) {
@@ -453,3 +255,4 @@ class AdminAiSchedulingService {
         public List<Map<String, Object>> items = new ArrayList<>();
     }
 }
+

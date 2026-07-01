@@ -6,7 +6,16 @@
             <file>file:/D:/Ky5/SWP391/SWP_Project_Hieu/SWP_Project/web/js/chat.js</file>
         </group>
         <group name="ÔN_PRJ_PE">
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsDAO.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/management/AdminManagementDAO.java</file>
             <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/model/ChatMessage.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/common/AdminRepository.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsService.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/patientflow/AdminPatientFlowDAO.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsHandler.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/management/AdminManagementHandler.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/AdminServlet.java</file>
+            <file>file:/D:/SE-Learning-Path/10-school-projects/java-web-development/s-coms/src/java/com/diabetes/monitoring/admin/scheduling/AdminSchedulingDAO.java</file>
         </group>
     </open-files>
 </project-private>

@@ -14,21 +14,9 @@ public class ApiResponseDTO {
         this.success = success;
         this.message = message == null ? "" : message;
     }
-
-    /**
-     * Handles is success for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean isSuccess() {
         return success;
     }
-
-    /**
-     * Gets message for the Admin module.
-     *
-     * @return the operation result
-     */
     public String getMessage() {
         return message;
     }

@@ -16,21 +16,9 @@ public class ReportSeriesDTO {
         this.period = period == null ? "" : period;
         this.value = value == null ? BigDecimal.ZERO : value;
     }
-
-    /**
-     * Gets period for the Admin module.
-     *
-     * @return the operation result
-     */
     public String getPeriod() {
         return period;
     }
-
-    /**
-     * Gets value for the Admin module.
-     *
-     * @return the operation result
-     */
     public BigDecimal getValue() {
         return value;
     }

@@ -15,9 +15,7 @@ public final class AdminJsonUtil {
     }
 
     /**
-     * Parses a simple flat JSON object into a string map.
-     *
-     * @return the operation result
+     * Parses a small flat JSON payload used by Admin AJAX actions.
      */
     public static Map<String, String> parseSimpleJsonToMap(String json) {
         java.util.Map<String, String> result = new java.util.HashMap<>();
@@ -48,11 +46,6 @@ public final class AdminJsonUtil {
         return result;
     }
 
-    /**
-     * Serializes series to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     public static String toJsonSeries(List<Map<String, Object>> series) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < series.size(); i++) {
@@ -70,11 +63,6 @@ public final class AdminJsonUtil {
         return sb.toString();
     }
 
-    /**
-     * Serializes invoices to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     public static String toJsonInvoices(List<Map<String, Object>> invoices) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < invoices.size(); i++) {
@@ -95,11 +83,6 @@ public final class AdminJsonUtil {
         return sb.toString();
     }
 
-    /**
-     * Serializes appointments to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     public static String toJsonAppointments(List<Map<String, Object>> appointments) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < appointments.size(); i++) {
@@ -121,11 +104,6 @@ public final class AdminJsonUtil {
         return sb.toString();
     }
 
-    /**
-     * Serializes invoice items to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     public static String toJsonInvoiceItems(List<Map<String, Object>> items) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < items.size(); i++) {
@@ -147,11 +125,6 @@ public final class AdminJsonUtil {
         return sb.toString();
     }
 
-    /**
-     * Serializes simple rows to JSON for Admin AJAX responses.
-     *
-     * @return the operation result
-     */
     public static String toJsonSimpleRows(List<Map<String, Object>> rows) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < rows.size(); i++) {
@@ -181,11 +154,6 @@ public final class AdminJsonUtil {
         return sb.toString();
     }
 
-    /**
-     * Handles parse int for the Admin module.
-     *
-     * @return the operation result
-     */
     public static int parseInt(String raw, int fallback) {
         try {
             return Integer.parseInt(raw);
@@ -194,11 +162,6 @@ public final class AdminJsonUtil {
         }
     }
 
-    /**
-     * Handles to big decimal for the Admin module.
-     *
-     * @return the operation result
-     */
     public static BigDecimal toBigDecimal(Object value) {
         if (value == null) {
             return BigDecimal.ZERO;
@@ -214,9 +177,7 @@ public final class AdminJsonUtil {
     }
 
     /**
-     * Escapes text so it can be safely embedded in JSON output.
-     *
-     * @return the operation result
+     * Escapes text before embedding it in JSON responses.
      */
     public static String escapeJson(String value) {
         if (value == null) {
@@ -228,11 +189,6 @@ public final class AdminJsonUtil {
                 .replace("\r", "");
     }
 
-    /**
-     * Removes wrapping quotes and unescapes a simple JSON string value.
-     *
-     * @return the operation result
-     */
     private static String unquote(String value) {
         String text = value == null ? "" : value.trim();
         if (text.startsWith("\"") && text.endsWith("\"") && text.length() >= 2) {

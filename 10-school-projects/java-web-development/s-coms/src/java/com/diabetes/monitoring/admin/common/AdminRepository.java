@@ -71,113 +71,58 @@ public class AdminRepository {
     // =========================
 
     // Kiểm tra role có nằm trong danh sách vai trò hợp lệ của hệ thống hay không.
-    /**
-     * Handles is allowed role for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean isAllowedRole(String role) {
         return ALLOWED_ROLES.contains(normalizeRole(role));
     }
 
     // Kiểm tra trạng thái tài khoản có được phép dùng trong admin hay không.
-    /**
-     * Handles is allowed account status for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean isAllowedAccountStatus(String status) {
         return ALLOWED_ACCOUNT_STATUS.contains(normalizeAccountStatus(status));
     }
 
     // Đếm tổng số tài khoản trong hệ thống.
-    /**
-     * Gets count total accounts for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getCountTotalAccounts() {
         return executeCount("SELECT COUNT(*) FROM Account");
     }
 
     // Đếm số tài khoản đang hoạt động.
-    /**
-     * Gets count active accounts for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getCountActiveAccounts() {
         return executeCount("SELECT COUNT(*) FROM Account WHERE LOWER(status) = 'active'");
     }
 
     // Đếm số tài khoản bị khóa.
-    /**
-     * Gets count locked accounts for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getCountLockedAccounts() {
         return executeCount("SELECT COUNT(*) FROM Account WHERE LOWER(status) = 'locked'");
     }
 
     // Đếm tổng số dịch vụ y tế đang tồn tại.
-    /**
-     * Gets count total services for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getCountTotalServices() {
         return executeCount("SELECT COUNT(*) FROM Medical_Service WHERE status = 'Active'");
     }
 
     // Tính tổng doanh thu đã thanh toán.
-    /**
-     * Gets sum paid revenue for the Admin module.
-     *
-     * @return the operation result
-     */
     public BigDecimal getSumPaidRevenue() {
         // Lấy tổng doanh thu đã thanh toán từ đầu năm đến hôm nay (không tính tương lai)
         return executeBigDecimal("SELECT ISNULL(SUM(final_amount), 0) FROM Invoice WHERE status = 'Paid' AND CAST(created_at AS DATE) <= CAST(GETDATE() AS DATE)");
     }
 
     // Đếm tổng số lượt khám đã hoàn tất.
-    /**
-     * Gets count completed appointments for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getCountCompletedAppointments() {
         return executeCount("SELECT COUNT(*) FROM Appointment WHERE LOWER(status) = 'completed'");
     }
 
     // Lấy chuỗi dữ liệu doanh thu cho biểu đồ dashboard.
-    /**
-     * Gets dashboard revenue series for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDashboardRevenueSeries(String granularity) {
         return getDashboardSeries("Invoice", "created_at", "final_amount", "status", "Paid", true, granularity);
     }
 
     // Lấy chuỗi dữ liệu lượt khám cho biểu đồ dashboard.
-    /**
-     * Gets dashboard visit series for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDashboardVisitSeries(String granularity) {
         String timeColumn = hasColumn("Appointment", "created_at") ? "created_at" : "appointment_time";
         return getDashboardSeries("Appointment", timeColumn, "appointment_id", "status", "Completed", false, granularity);
     }
 
     // Lấy số bệnh nhân đang chờ theo từng bác sĩ trong ngày hôm nay.
-    /**
-     * Gets today clinic queue status for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayClinicQueueStatus() {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -209,11 +154,6 @@ public class AdminRepository {
     }
 
     // Lấy chi tiết hàng đợi hôm nay của một bác sĩ cụ thể.
-    /**
-     * Gets doctor queue detail today for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorQueueDetailToday(int doctorId) {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -273,21 +213,11 @@ public class AdminRepository {
     }
 
     // Đếm số lượt khám thực sự đã diễn ra trong hôm nay.
-    /**
-     * Gets today total visits for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getTodayTotalVisits() {
         return executeCount("SELECT COUNT(*) FROM Appointment WHERE LOWER(status) = 'completed' AND CAST(appointment_time AS DATE) = CAST(GETDATE() AS DATE) AND appointment_time <= GETDATE()");
     }
 
     // Chuẩn hóa dữ liệu cũ: nếu lịch hẹn ở tương lai nhưng status completed thì kéo về Waiting.
-    /**
-     * Normalizes future completed appointments for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     public int normalizeFutureCompletedAppointments() {
         String sql = "UPDATE Appointment "
                 + "SET status = 'Waiting' "
@@ -306,11 +236,8 @@ public class AdminRepository {
         }
     }
 
-    // Tự động chuyển các lịch hẹn Waiting đã quá giờ chốt sang No_Show.
     /**
-     * Handles mark late waiting appointments as no show for the Admin module.
-     *
-     * @return the operation result
+     * Marks late Waiting appointments as No_Show after the schedule cutoff time.
      */
     public int markLateWaitingAppointmentsAsNoShow() {
         String sql = "UPDATE a SET a.status = 'No_Show' "
@@ -337,11 +264,6 @@ public class AdminRepository {
     }
 
     // Demo: tự động đẩy workflow Appointment theo mốc thời gian để mô phỏng lễ tân/bác sĩ.
-    /**
-     * Handles auto advance appointment workflow demo for the Admin module.
-     *
-     * @return the operation result
-     */
     public int autoAdvanceAppointmentWorkflowDemo() {
         int totalUpdated = 0;
 
@@ -408,51 +330,32 @@ public class AdminRepository {
     }
 
     // Wrapper tương thích với các chỗ gọi cũ.
-    /**
-     * Handles auto transition appointment statuses for the Admin module.
-     *
-     * @return the operation result
-     */
     public int autoTransitionAppointmentStatuses() {
         return autoAdvanceAppointmentWorkflowDemo();
     }
 
-    // Đánh dấu lịch hẹn đã check-in khi bệnh nhân tới quầy.
     /**
-     * Handles check in appointment for the Admin module.
-     *
-     * @return the operation result
+     * Moves an appointment from Waiting to Checked_In.
      */
     public boolean checkInAppointment(int appointmentId) {
         return updateAppointmentStatus(appointmentId, "Checked_In", "Waiting");
     }
 
-    // Bắt đầu lượt khám sau khi đã check-in.
     /**
-     * Handles start appointment for the Admin module.
-     *
-     * @return the operation result
+     * Moves an appointment from Checked_In to In_Progress.
      */
     public boolean startAppointment(int appointmentId) {
         return updateAppointmentStatus(appointmentId, "In_Progress", "Checked_In");
     }
 
-    // Hoàn tất lượt khám sau khi đang khám.
     /**
-     * Handles complete appointment for the Admin module.
-     *
-     * @return the operation result
+     * Moves an appointment from In_Progress to Completed.
      */
     public boolean completeAppointment(int appointmentId) {
         return updateAppointmentStatus(appointmentId, "Completed", "In_Progress", "In-Progress");
     }
 
     // Cập nhật trạng thái lịch hẹn với ràng buộc trạng thái đầu vào cho phép.
-    /**
-     * Updates appointment status for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean updateAppointmentStatus(int appointmentId, String newStatus, String... allowedCurrentStatuses) {
         if (appointmentId <= 0 || newStatus == null || newStatus.trim().isEmpty()) {
             return false;
@@ -487,22 +390,12 @@ public class AdminRepository {
     }
 
     // Đếm số bệnh nhân đang chờ khám trong ngày hôm nay.
-    /**
-     * Gets today waiting patients for the Admin module.
-     *
-     * @return the operation result
-     */
     public int getTodayWaitingPatients() {
         markLateWaitingAppointmentsAsNoShow();
         return executeCount("SELECT COUNT(*) FROM Appointment WHERE LOWER(status) = 'checked_in' AND CAST(appointment_time AS DATE) = CAST(GETDATE() AS DATE)");
     }
 
     // Lấy danh sách các lượt khám đã hoàn tất trong ngày hôm nay.
-    /**
-     * Gets today appointments for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayAppointments() {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -541,11 +434,6 @@ public class AdminRepository {
     }
 
     // Lấy chi tiết danh sách bệnh nhân đang chờ để hiển thị ở modal dashboard.
-    /**
-     * Gets today waiting details for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayWaitingDetails() {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -586,11 +474,6 @@ public class AdminRepository {
     }
 
     // Thống kê lượt khám theo từng khung giờ trong ngày.
-    /**
-     * Gets today patient flow by time slot for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayPatientFlowByTimeSlot() {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -636,11 +519,6 @@ public class AdminRepository {
     }
 
     // Thống kê doanh thu hôm nay theo loại dịch vụ khám/xét nghiệm.
-    /**
-     * Gets today revenue by service type for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayRevenueByServiceType() {
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT "
@@ -672,11 +550,6 @@ public class AdminRepository {
     }
 
     // Thống kê phân bố trạng thái ca khám hôm nay.
-    /**
-     * Gets today appointment status distribution for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodayAppointmentStatusDistribution() {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -717,11 +590,6 @@ public class AdminRepository {
     }
 
     // Lấy tổng hợp KPI cho dashboard admin.
-    /**
-     * Gets dashboard summary for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getDashboardSummary() {
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalAccounts", 0);
@@ -764,11 +632,6 @@ public class AdminRepository {
     }
 
     // Lấy dữ liệu theo tháng để vẽ biểu đồ doanh thu và lượt khám.
-    /**
-     * Gets monthly revenue and visits series for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getMonthlyRevenueAndVisitsSeries(int monthBackInclusive) {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -816,11 +679,6 @@ public class AdminRepository {
     // =========================
 
     // Lấy danh sách tài khoản theo bộ lọc tìm kiếm/role/status.
-    /**
-     * Gets accounts for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<User> getAccounts(String search, String role, String status) {
         List<User> users = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT account_id, full_name, email, role, status, created_at FROM Account WHERE 1=1");
@@ -871,11 +729,6 @@ public class AdminRepository {
     // =========================
 
     // Tạo tài khoản mới cho admin, receptionist, doctor hoặc patient.
-    /**
-     * Creates account for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createAccount(String fullName, String email, String passwordHash, String role, String status) {
         String normalizedRole = normalizeRole(role);
         String normalizedStatus = normalizeAccountStatus(status);
@@ -903,11 +756,6 @@ public class AdminRepository {
     }
 
     // Kiểm tra email tài khoản đã tồn tại hay chưa (không phân biệt hoa thường).
-    /**
-     * Handles is account email exists for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean isAccountEmailExists(String email) {
         if (email == null || email.isBlank()) {
             return false;
@@ -926,11 +774,6 @@ public class AdminRepository {
     }
 
     // Cập nhật role của tài khoản.
-    /**
-     * Updates account role for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateAccountRole(int accountId, String role) {
         String normalizedRole = normalizeRole(role);
         if (normalizedRole == null) {
@@ -949,11 +792,6 @@ public class AdminRepository {
     }
 
     // Khóa hoặc kích hoạt lại tài khoản.
-    /**
-     * Updates account status for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateAccountStatus(int accountId, String status) {
         String normalizedStatus = normalizeAccountStatus(status);
         if (normalizedStatus == null) {
@@ -972,11 +810,6 @@ public class AdminRepository {
     }
 
     // Xóa tài khoản (không áp dụng cho bác sĩ); rollback nếu có ràng buộc dữ liệu.
-    /**
-     * Deletes account for admin for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean deleteAccountForAdmin(int accountId) {
         if (accountId <= 0) {
             return false;
@@ -1037,11 +870,6 @@ public class AdminRepository {
     }
 
     // Lấy hồ sơ chi tiết tài khoản để admin chỉnh sửa theo vai trò.
-    /**
-     * Gets account profile for admin edit for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getAccountProfileForAdminEdit(int accountId) {
         Map<String, Object> profile = new HashMap<>();
         String sqlAccount = "SELECT account_id, full_name, email, role FROM Account WHERE account_id = ?";
@@ -1097,11 +925,6 @@ public class AdminRepository {
     }
 
     // Cập nhật hồ sơ tài khoản theo vai trò: Account + Patient/Doctor nếu có.
-    /**
-     * Updates account profile by role for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateAccountProfileByRole(int accountId,
             String fullName,
             String email,
@@ -1207,11 +1030,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách tài khoản dạng nhanh cho quick modal trên dashboard.
-    /**
-     * Gets staff accounts quick for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getStaffAccountsQuick(String status, int limit) {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -1259,11 +1077,6 @@ public class AdminRepository {
     }
 
     // Lấy các hóa đơn đã thanh toán gần nhất trong ngày để hiển thị nhanh.
-    /**
-     * Gets recent paid invoices today for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getRecentPaidInvoicesToday(int limit) {
         List<Map<String, Object>> rows = new ArrayList<>();
         String sql = "SELECT TOP (?) i.invoice_id, p.full_name AS patient_name, i.final_amount, "
@@ -1292,11 +1105,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách lượt khám completed hôm nay cho quick modal.
-    /**
-     * Gets completed appointments today quick for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getCompletedAppointmentsTodayQuick(int limit) {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -1341,11 +1149,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách dịch vụ y tế theo bộ lọc tìm kiếm/loại/trạng thái.
-    /**
-     * Gets medical services for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getMedicalServices(String search, String serviceType, String status) {
         List<Map<String, Object>> rows = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT service_id, service_name, price, service_type, status FROM Medical_Service WHERE 1=1");
@@ -1389,11 +1192,6 @@ public class AdminRepository {
     }
 
     // Tạo dịch vụ y tế mới.
-    /**
-     * Creates medical service for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createMedicalService(String serviceName, BigDecimal price, String serviceType, String status) {
         if (!isAllowedServiceType(serviceType) || !isAllowedServiceStatus(status)) {
             return false;
@@ -1413,11 +1211,6 @@ public class AdminRepository {
     }
 
     // Cập nhật thông tin dịch vụ y tế.
-    /**
-     * Updates medical service for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateMedicalService(int serviceId, String serviceName, BigDecimal price, String serviceType, String status) {
         if (!isAllowedServiceType(serviceType) || !isAllowedServiceStatus(status)) {
             return false;
@@ -1438,11 +1231,6 @@ public class AdminRepository {
     }
 
     // Xóa một dịch vụ y tế khỏi hệ thống.
-    /**
-     * Deletes medical service for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean deleteMedicalService(int serviceId) {
         String sql = "DELETE FROM Medical_Service WHERE service_id = ?";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -1455,11 +1243,6 @@ public class AdminRepository {
     }
 
     // Cập nhật trạng thái Active/Inactive của dịch vụ.
-    /**
-     * Updates medical service status for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateMedicalServiceStatus(int serviceId, String status) {
         if (!isAllowedServiceStatus(status)) {
             return false;
@@ -1480,11 +1263,6 @@ public class AdminRepository {
     // =========================
 
     // Lấy danh sách bác sĩ khả dụng để tạo lịch trực thủ công.
-    /**
-     * Gets doctors for schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorsForSchedule() {
         List<Map<String, Object>> doctors = new ArrayList<>();
         String sql = "SELECT d.doctor_id, d.full_name, d.department "
@@ -1509,11 +1287,6 @@ public class AdminRepository {
     }
 
     // Lấy chi tiết một ca trực theo scheduleId để phục vụ chuyển giao hoặc chỉnh sửa.
-    /**
-     * Gets doctor schedule by id for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getDoctorScheduleById(int scheduleId) {
         boolean hasOnlineQuota = hasColumn("Doctor_Schedule", "online_quota");
         String sql = "SELECT ds.schedule_id, ds.doctor_id, d.full_name, d.department, ds.work_date, ds.time_slot, ds.max_patients, "
@@ -1535,8 +1308,10 @@ public class AdminRepository {
                 row.put("department", rs.getString("department"));
                 row.put("workDate", rs.getDate("work_date"));
                 row.put("timeSlot", rs.getString("time_slot"));
-                row.put("maxPatients", rs.getInt("max_patients"));
-                row.put("onlineQuota", rs.getObject("online_quota") == null ? null : rs.getInt("online_quota"));
+                int maxPatients = rs.getInt("max_patients");
+                row.put("maxPatients", maxPatients);
+                int onlineQuota = getEffectiveOnlineQuota(rs.getObject("online_quota"), maxPatients);
+                row.put("onlineQuota", onlineQuota);
                 row.put("bookedCount", getBookedCountBySchedule(scheduleId));
                 row.put("onlineBookedCount", getOnlineBookedCountBySchedule(scheduleId));
                 row.put("status", rs.getString("status"));
@@ -1548,13 +1323,11 @@ public class AdminRepository {
         }
     }
 
-    // Cập nhật thông tin ca trực (doctor, time slot, max patients, status)
-    /**
-     * Updates doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateDoctorSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, String status) {
+        return updateDoctorSchedule(scheduleId, doctorId, timeSlot, maxPatients, null, status);
+    }
+
+    public boolean updateDoctorSchedule(int scheduleId, int doctorId, String timeSlot, int maxPatients, Integer onlineQuota, String status) {
         clearScheduleValidationMessage();
         if (scheduleId <= 0) {
             setScheduleValidationMessage("Schedule id không hợp lệ");
@@ -1571,15 +1344,28 @@ public class AdminRepository {
             return false;
         }
 
-        String sql = "UPDATE Doctor_Schedule SET doctor_id = ?, time_slot = ?, max_patients = ?, online_quota = ?, status = ? WHERE schedule_id = ?";
+        int resolvedOnlineQuota = onlineQuota == null ? getDefaultOnlineQuota(maxPatients) : onlineQuota;
+        if (resolvedOnlineQuota < 0 || resolvedOnlineQuota > maxPatients) {
+            setScheduleValidationMessage("Slot online phải nằm trong khoảng từ 0 đến số bệnh nhân tối đa.");
+            return false;
+        }
+
+        boolean hasOnlineQuota = hasColumn("Doctor_Schedule", "online_quota");
+        String sql = hasOnlineQuota
+                ? "UPDATE Doctor_Schedule SET doctor_id = ?, time_slot = ?, max_patients = ?, online_quota = ?, status = ? WHERE schedule_id = ?"
+                : "UPDATE Doctor_Schedule SET doctor_id = ?, time_slot = ?, max_patients = ?, status = ? WHERE schedule_id = ?";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            int onlineQuota = getDefaultOnlineQuota(maxPatients);
             statement.setInt(1, doctorId);
             statement.setString(2, timeSlot);
             statement.setInt(3, maxPatients);
-            statement.setInt(4, onlineQuota);
-            statement.setString(5, status);
-            statement.setInt(6, scheduleId);
+            if (hasOnlineQuota) {
+                statement.setInt(4, resolvedOnlineQuota);
+                statement.setString(5, status);
+                statement.setInt(6, scheduleId);
+            } else {
+                statement.setString(4, status);
+                statement.setInt(5, scheduleId);
+            }
             int updated = statement.executeUpdate();
             return updated > 0;
         } catch (SQLException e) {
@@ -1590,11 +1376,6 @@ public class AdminRepository {
     }
 
     // Chuyển giao một ca trực sang bác sĩ khác sau khi kiểm tra xung đột.
-    /**
-     * Handles transfer doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean transferDoctorSchedule(int scheduleId, int targetDoctorId) {
         clearScheduleValidationMessage();
         if (scheduleId <= 0 || targetDoctorId <= 0) {
@@ -1666,11 +1447,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách bệnh nhân thuộc một ca trực cụ thể.
-    /**
-     * Gets appointments by schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAppointmentsBySchedule(int scheduleId) {
         List<Map<String, Object>> rows = new ArrayList<>();
         boolean hasBookingSource = hasColumn("Appointment", "booking_source");
@@ -1703,11 +1479,6 @@ public class AdminRepository {
     }
 
     // Lấy dữ liệu bác sĩ để AI scheduling cân bằng tải và đúng khoa.
-    /**
-     * Gets doctors for ai scheduling for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorsForAiScheduling(Date startDate, Date endDate) {
         List<Map<String, Object>> doctors = new ArrayList<>();
         String sql = "SELECT d.doctor_id, d.full_name, d.department, LOWER(a.status) AS account_status, "
@@ -1772,11 +1543,6 @@ public class AdminRepository {
      * lại tên khoa Tổng quát để AI có thể phân bổ dự phòng.
      */
     // Chuẩn hóa tên khoa để AI scheduling dùng một chuẩn thống nhất.
-    /**
-     * Normalizes department for ai for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeDepartmentForAi(String rawDepartment) {
         if (rawDepartment == null) {
             return "General";
@@ -1802,11 +1568,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách ca trực hôm nay cho modal dashboard.
-    /**
-     * Gets today schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getTodaySchedules() {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -1815,7 +1576,7 @@ public class AdminRepository {
         boolean hasBookingSource = hasColumn("Appointment", "booking_source");
         boolean hasOnlineQuota = hasColumn("Doctor_Schedule", "online_quota");
         String onlineBookedExpression = hasBookingSource
-                ? "SUM(CASE WHEN LOWER(a.booking_source) = 'online' AND LOWER(a.status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') THEN 1 ELSE 0 END)"
+                ? "SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(a.booking_source, '')))) = 'online' AND LOWER(LTRIM(RTRIM(COALESCE(a.status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') THEN 1 ELSE 0 END)"
                 : "0";
 
         String sql = "SELECT ds.schedule_id, d.full_name, d.department, ds.time_slot, ds.max_patients, "
@@ -1828,8 +1589,8 @@ public class AdminRepository {
                 + "JOIN Doctor d ON d.doctor_id = ds.doctor_id "
             + "LEFT JOIN ("
             + "   SELECT a.schedule_id, "
-            + "      SUM(CASE WHEN LOWER(a.status) IN ('checked_in', 'in_progress', 'in-progress') THEN 1 ELSE 0 END) AS active_count, "
-            + "      SUM(CASE WHEN LOWER(a.status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') THEN 1 ELSE 0 END) AS booked_count, "
+            + "      SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(a.status, '')))) IN ('checked_in', 'in_progress') THEN 1 ELSE 0 END) AS active_count, "
+            + "      SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(a.status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') THEN 1 ELSE 0 END) AS booked_count, "
             + "      " + onlineBookedExpression + " AS online_booked_count "
             + "   FROM Appointment a "
             + "   WHERE a.schedule_id IS NOT NULL "
@@ -1845,12 +1606,14 @@ public class AdminRepository {
                 row.put("fullName", rs.getString("full_name"));
                 row.put("department", rs.getString("department"));
                 row.put("timeSlot", rs.getString("time_slot"));
-                row.put("maxPatients", rs.getInt("max_patients"));
-                row.put("onlineQuota", rs.getObject("online_quota") == null ? null : rs.getInt("online_quota"));
+                int maxPatients = rs.getInt("max_patients");
+                int onlineQuota = getEffectiveOnlineQuota(rs.getObject("online_quota"), maxPatients);
+                row.put("maxPatients", maxPatients);
+                row.put("onlineQuota", onlineQuota);
                 row.put("currentLoad", rs.getInt("booked_count"));
                 row.put("bookedCount", rs.getInt("booked_count"));
                 row.put("onlineBookedCount", rs.getInt("online_booked_count"));
-                row.put("reservedSlots", Math.max(0, rs.getInt("max_patients") - getEffectiveOnlineQuota(rs.getObject("online_quota"), rs.getInt("max_patients"))));
+                row.put("reservedSlots", Math.max(0, maxPatients - onlineQuota));
                 row.put("activeCount", rs.getInt("active_count"));
                 row.put("status", rs.getString("status"));
                 rows.add(row);
@@ -1863,11 +1626,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách khoa đang có dữ liệu lịch trực.
-    /**
-     * Gets schedule departments for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<String> getScheduleDepartments() {
         List<String> departments = new ArrayList<>();
         String sql = "SELECT DISTINCT d.department "
@@ -1886,11 +1644,6 @@ public class AdminRepository {
     }
 
     // Lấy danh sách lịch trực theo bộ lọc khoa/bác sĩ/ngày.
-    /**
-     * Gets doctor schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getDoctorSchedules(String department, String doctorName, Date workDate) {
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -1902,8 +1655,8 @@ public class AdminRepository {
                 ? "LEFT JOIN ("
                 + "   SELECT schedule_id, COUNT(*) AS online_booked_count "
                 + "   FROM Appointment "
-                + "   WHERE LOWER(booking_source) = 'online' "
-                + "   AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') "
+                + "   WHERE LOWER(LTRIM(RTRIM(COALESCE(booking_source, '')))) = 'online' "
+                + "   AND LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') "
                 + "   GROUP BY schedule_id"
                 + ") online_bookings ON online_bookings.schedule_id = ds.schedule_id "
                 : "OUTER APPLY (SELECT 0 AS online_booked_count) online_bookings ";
@@ -1916,8 +1669,8 @@ public class AdminRepository {
                 + "COALESCE(ds.time_slot, '00:00-00:00') AS time_slot, "
                 + "ISNULL(ds.max_patients, 1) AS max_patients, "
                 + (hasOnlineQuota
-                ? "ISNULL(ds.online_quota, CASE WHEN ISNULL(ds.max_patients, 1) <= 1 THEN ISNULL(ds.max_patients, 1) ELSE ISNULL(ds.max_patients, 1) - 1 END)"
-                : "CASE WHEN ISNULL(ds.max_patients, 1) <= 1 THEN ISNULL(ds.max_patients, 1) ELSE ISNULL(ds.max_patients, 1) - 1 END")
+                ? "ISNULL(ds.online_quota, CASE WHEN ISNULL(ds.max_patients, 1) <= 1 THEN ISNULL(ds.max_patients, 1) WHEN CEILING(ISNULL(ds.max_patients, 1) * 0.6) >= ISNULL(ds.max_patients, 1) THEN ISNULL(ds.max_patients, 1) - 1 ELSE CAST(CEILING(ISNULL(ds.max_patients, 1) * 0.6) AS int) END)"
+                : "CASE WHEN ISNULL(ds.max_patients, 1) <= 1 THEN ISNULL(ds.max_patients, 1) WHEN CEILING(ISNULL(ds.max_patients, 1) * 0.6) >= ISNULL(ds.max_patients, 1) THEN ISNULL(ds.max_patients, 1) - 1 ELSE CAST(CEILING(ISNULL(ds.max_patients, 1) * 0.6) AS int) END")
                 + " AS online_quota, "
                 + "ds.status, "
             + "COALESCE(active_bookings.active_count, 0) AS active_count, "
@@ -1928,13 +1681,13 @@ public class AdminRepository {
                 + "LEFT JOIN ("
                 + "   SELECT schedule_id, COUNT(*) AS active_count "
                 + "   FROM Appointment "
-                + "   WHERE LOWER(status) IN ('checked_in', 'in_progress', 'in-progress') "
+                + "   WHERE LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('checked_in', 'in_progress') "
                 + "   GROUP BY schedule_id"
                 + ") active_bookings ON active_bookings.schedule_id = ds.schedule_id "
             + "LEFT JOIN ("
             + "   SELECT schedule_id, COUNT(*) AS booked_count "
             + "   FROM Appointment "
-            + "   WHERE LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') "
+            + "   WHERE LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') "
             + "   GROUP BY schedule_id"
             + ") booked_bookings ON booked_bookings.schedule_id = ds.schedule_id "
             + onlineBookingsJoin
@@ -2029,21 +1782,11 @@ public class AdminRepository {
     }
 
     // Tạo ca trực thủ công, áp dụng đầy đủ constraint lịch trực.
-    /**
-     * Creates doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createDoctorSchedule(int doctorId, Date workDate, String timeSlot, int maxPatients, String status) {
         return createDoctorSchedule(doctorId, workDate, timeSlot, maxPatients, null, status);
     }
 
     // Tạo ca trực thủ công với online quota tùy chọn.
-    /**
-     * Creates doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean createDoctorSchedule(int doctorId, Date workDate, String timeSlot, int maxPatients, Integer onlineQuota, String status) {
         clearScheduleValidationMessage();
 
@@ -2058,7 +1801,10 @@ public class AdminRepository {
             return false;
         }
 
-        String sql = "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, online_quota, status) VALUES (?, ?, ?, ?, ?, ?)";
+        boolean hasOnlineQuota = hasColumn("Doctor_Schedule", "online_quota");
+        String sql = hasOnlineQuota
+                ? "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, online_quota, status) VALUES (?, ?, ?, ?, ?, ?)"
+                : "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, status) VALUES (?, ?, ?, ?, ?)";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             String validatedTimeSlot = normalizeTimeSlot(timeSlot);
             String validationError = validateScheduleConstraints(connection, doctorId, workDate, validatedTimeSlot, maxPatients, null);
@@ -2071,8 +1817,12 @@ public class AdminRepository {
             statement.setDate(2, workDate);
             statement.setString(3, validatedTimeSlot);
             statement.setInt(4, maxPatients);
-            statement.setInt(5, resolvedOnlineQuota);
-            statement.setString(6, normalizeScheduleStatus(status));
+            if (hasOnlineQuota) {
+                statement.setInt(5, resolvedOnlineQuota);
+                statement.setString(6, normalizeScheduleStatus(status));
+            } else {
+                statement.setString(5, normalizeScheduleStatus(status));
+            }
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to create doctor schedule", e);
@@ -2087,11 +1837,6 @@ public class AdminRepository {
     // =========================
 
     // Lưu batch lịch do Gemini trả về sau khi đã validate toàn bộ ràng buộc.
-    /**
-     * Creates gemini schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> createGeminiSchedules(List<Map<String, Object>> assignments,
             int maxPatients,
             int expectedCount) {
@@ -2140,11 +1885,11 @@ public class AdminRepository {
                 + " OR COALESCE(active_load.active_count, 0) < COALESCE(capacity_load.total_capacity, 0) * 0.90)";
         String duplicateSql = "SELECT COUNT(*) FROM Doctor_Schedule "
                 + "WHERE doctor_id = ? AND work_date = ? AND time_slot = ? AND status <> 'Cancelled'";
-        String insertSql = "INSERT INTO Doctor_Schedule "
-            + "(doctor_id, work_date, time_slot, max_patients, online_quota, status) "
-            + "VALUES (?, ?, ?, ?, ?, 'Available')";
-
         try (Connection connection = DatabaseConnection.getConnection()) {
+            boolean hasOnlineQuota = hasColumn(connection, "Doctor_Schedule", "online_quota");
+            String insertSql = hasOnlineQuota
+                    ? "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, online_quota, status) VALUES (?, ?, ?, ?, ?, 'Available')"
+                    : "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, status) VALUES (?, ?, ?, ?, 'Available')";
             connection.setAutoCommit(false);
             try {
                 Map<String, Integer> previousDoctorByDate = new HashMap<>();
@@ -2206,7 +1951,9 @@ public class AdminRepository {
                         insert.setDate(2, workDate);
                         insert.setString(3, timeSlot);
                         insert.setInt(4, maxPatients);
-                        insert.setInt(5, getDefaultOnlineQuota(maxPatients));
+                        if (hasOnlineQuota) {
+                            insert.setInt(5, getDefaultOnlineQuota(maxPatients));
+                        }
                         if (insert.executeUpdate() != 1) {
                             throw new SQLException("Could not insert Gemini schedule");
                         }
@@ -2254,11 +2001,6 @@ public class AdminRepository {
     }
 
     // Kiểm tra batch AI có cân bằng tải giữa các bác sĩ hay không.
-    /**
-     * Handles is balanced schedule batch for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean isBalancedScheduleBatch(Connection connection, List<Map<String, Object>> rows) throws SQLException {
         if (rows == null || rows.isEmpty()) {
             return true;
@@ -2294,11 +2036,6 @@ public class AdminRepository {
 
     // Wrapper theo khoảng ngày cho thuật toán fallback cân bằng tải.
     // Wrapper chuyển khoảng ngày thành danh sách ngày trước khi chạy fallback AI.
-    /**
-     * Creates ai optimized schedules for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> createAiOptimizedSchedules(Date startDate,
             Date endDate,
             List<Map<String, String>> shiftsPerDay,
@@ -2316,12 +2053,8 @@ public class AdminRepository {
         return createAiOptimizedSchedules(targetDates, shiftsPerDay, department, maxPatients, maxSchedules);
     }
 
-    // Fallback scheduler nội bộ: ưu tiên tải thấp, giới hạn 2 ca/ngày, tránh overlap.
-    // Tạo lịch tự động bằng thuật toán nội bộ khi Gemini không trả kết quả hợp lệ.
     /**
-     * Creates ai optimized schedules for the Admin module.
-     *
-     * @return the operation result
+     * Creates schedules with the local fallback optimizer when Gemini cannot provide a valid batch.
      */
     public List<Map<String, Object>> createAiOptimizedSchedules(List<Date> targetDates,
             List<Map<String, String>> shiftsPerDay,
@@ -2406,10 +2139,11 @@ public class AdminRepository {
                 + "CASE WHEN COALESCE(capacity_load.total_capacity, 0) = 0 THEN 0 "
                 + "     ELSE CAST(COALESCE(active_load.active_count, 0) AS FLOAT) / capacity_load.total_capacity END ASC, "
                 + "COALESCE(schedule_load.schedule_count, 0) ASC, d.full_name ASC";
-        String insertSql = "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, online_quota, status) "
-            + "VALUES (?, ?, ?, ?, ?, 'Available')";
-
         try (Connection connection = DatabaseConnection.getConnection()) {
+            boolean hasOnlineQuota = hasColumn(connection, "Doctor_Schedule", "online_quota");
+            String insertSql = hasOnlineQuota
+                    ? "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, online_quota, status) VALUES (?, ?, ?, ?, ?, 'Available')"
+                    : "INSERT INTO Doctor_Schedule (doctor_id, work_date, time_slot, max_patients, status) VALUES (?, ?, ?, ?, 'Available')";
             connection.setAutoCommit(false);
             try {
                 for (Date sqlDate : targetDates) {
@@ -2461,7 +2195,9 @@ public class AdminRepository {
                             insert.setDate(2, sqlDate);
                             insert.setString(3, timeSlot);
                             insert.setInt(4, maxPatients);
-                            insert.setInt(5, getDefaultOnlineQuota(maxPatients));
+                            if (hasOnlineQuota) {
+                                insert.setInt(5, getDefaultOnlineQuota(maxPatients));
+                            }
                             if (insert.executeUpdate() > 0) {
                                 int scheduleId = 0;
                                 try (ResultSet keys = insert.getGeneratedKeys()) {
@@ -2522,11 +2258,6 @@ public class AdminRepository {
      */
     // Hook soft-constraint cho lịch cố định tuần (hiện để mở rộng, chưa kích hoạt dữ liệu).
     // Hook mở rộng cho lịch cố định theo tuần; hiện trả null để không ảnh hưởng AI hiện tại.
-    /**
-     * Gets preferred doctor id for fixed rotation for the Admin module.
-     *
-     * @return the operation result
-     */
     private Integer getPreferredDoctorIdForFixedRotation(Connection connection,
             Date workDate,
             String timeSlot,
@@ -2535,11 +2266,6 @@ public class AdminRepository {
     }
 
     // Lấy thông tin cơ bản của bác sĩ để dùng lại khi ưu tiên fixed rotation.
-    /**
-     * Gets doctor snapshot by id for the Admin module.
-     *
-     * @return the operation result
-     */
     private Map<String, Object> getDoctorSnapshotById(Connection connection, int doctorId) throws SQLException {
         String sql = "SELECT d.doctor_id, d.full_name, d.department "
                 + "FROM Doctor d JOIN Account a ON a.account_id = d.account_id "
@@ -2563,11 +2289,6 @@ public class AdminRepository {
 
     // Chọn bác sĩ phù hợp cho một slot theo tải, chuyên khoa và các ràng buộc.
     // Chọn bác sĩ phù hợp cho từng slot dựa trên tải, chuyên khoa và ràng buộc.
-    /**
-     * Handles pick schedule doctor for the Admin module.
-     *
-     * @return the operation result
-     */
     private Map<String, Object> pickScheduleDoctor(Connection connection,
             String pickDoctorSql,
             Date startDate,
@@ -2615,11 +2336,6 @@ public class AdminRepository {
 
     // Cập nhật ca trực thủ công với cùng bộ constraint như khi tạo mới.
     // Cập nhật ca trực và validate lại overlap, số ca/ngày, giới hạn bệnh nhân.
-    /**
-     * Updates doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateDoctorSchedule(int scheduleId, Date workDate, String timeSlot, int maxPatients, String status) {
         clearScheduleValidationMessage();
 
@@ -2628,7 +2344,10 @@ public class AdminRepository {
             return false;
         }
 
-        String sql = "UPDATE Doctor_Schedule SET work_date = ?, time_slot = ?, max_patients = ?, online_quota = ?, status = ? WHERE schedule_id = ?";
+        boolean hasOnlineQuota = hasColumn("Doctor_Schedule", "online_quota");
+        String sql = hasOnlineQuota
+                ? "UPDATE Doctor_Schedule SET work_date = ?, time_slot = ?, max_patients = ?, online_quota = ?, status = ? WHERE schedule_id = ?"
+                : "UPDATE Doctor_Schedule SET work_date = ?, time_slot = ?, max_patients = ?, status = ? WHERE schedule_id = ?";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             Integer doctorId = getDoctorIdByScheduleId(connection, scheduleId);
             if (doctorId == null) {
@@ -2646,9 +2365,14 @@ public class AdminRepository {
             statement.setDate(1, workDate);
             statement.setString(2, validatedTimeSlot);
             statement.setInt(3, maxPatients);
-            statement.setInt(4, getDefaultOnlineQuota(maxPatients));
-            statement.setString(5, normalizeScheduleStatus(status));
-            statement.setInt(6, scheduleId);
+            if (hasOnlineQuota) {
+                statement.setInt(4, getDefaultOnlineQuota(maxPatients));
+                statement.setString(5, normalizeScheduleStatus(status));
+                statement.setInt(6, scheduleId);
+            } else {
+                statement.setString(4, normalizeScheduleStatus(status));
+                statement.setInt(5, scheduleId);
+            }
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to update doctor schedule", e);
@@ -2658,11 +2382,6 @@ public class AdminRepository {
     }
 
     // Xóa hẳn lịch trực theo scheduleId.
-    /**
-     * Deletes doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean deleteDoctorSchedule(int scheduleId) {
         String sql = "DELETE FROM Doctor_Schedule WHERE schedule_id = ?";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -2676,11 +2395,6 @@ public class AdminRepository {
 
     // Hủy ca trực; chặn hủy nếu ca đã Cancelled hoặc Expired.
     // Hủy lịch trực nhưng vẫn giữ bản ghi để truy vết lịch sử.
-    /**
-     * Handles cancel doctor schedule for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean cancelDoctorSchedule(int scheduleId) {
         clearScheduleValidationMessage();
         String sql = "UPDATE Doctor_Schedule SET status = 'Cancelled' "
@@ -2701,11 +2415,6 @@ public class AdminRepository {
     }
 
     // Lấy các ca đang chờ/đang khám để điều phối ngoại lệ.
-    /**
-     * Gets exception queue for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getExceptionQueue(Integer doctorId) {
         markLateWaitingAppointmentsAsNoShow();
 
@@ -2752,15 +2461,14 @@ public class AdminRepository {
         return rows;
     }
 
-    // Đếm số slot còn chiếm trong ca, không tính Cancelled/No_Show.
     /**
-     * Gets booked count by schedule for the Admin module.
-     *
-     * @return the operation result
+     * Counts appointments that still occupy schedule capacity.
+     * Cancelled and No_Show are excluded.
      */
     public int getBookedCountBySchedule(int scheduleId) {
         String sql = "SELECT COUNT(*) AS booked_count FROM Appointment "
-                + "WHERE schedule_id = ? AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed')";
+                + "WHERE schedule_id = ? "
+                + "AND LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed')";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, scheduleId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -2774,19 +2482,18 @@ public class AdminRepository {
         return 0;
     }
 
-    // Đếm số slot online còn chiếm trong ca.
     /**
-     * Gets online booked count by schedule for the Admin module.
-     *
-     * @return the operation result
+     * Counts online appointments that still occupy the online quota.
+     * Cancelled and No_Show are excluded.
      */
     public int getOnlineBookedCountBySchedule(int scheduleId) {
         if (!hasColumn("Appointment", "booking_source")) {
             return 0;
         }
         String sql = "SELECT COUNT(*) AS booked_count FROM Appointment "
-                + "WHERE schedule_id = ? AND LOWER(booking_source) = 'online' "
-                + "AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed')";
+                + "WHERE schedule_id = ? "
+                + "AND LOWER(LTRIM(RTRIM(COALESCE(booking_source, '')))) = 'online' "
+                + "AND LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed')";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, scheduleId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -2800,32 +2507,22 @@ public class AdminRepository {
         return 0;
     }
 
-    // Cho phép đặt online nếu ca còn slot tổng và còn quota online.
     /**
-     * Handles can book online for the Admin module.
-     *
-     * @return the operation result
+     * Checks whether a patient can book this schedule online.
      */
     public boolean canBookOnline(int scheduleId) {
         return canBookBySource(scheduleId, true);
     }
 
-    // Cho phép lễ tân/admin/walk-in nếu ca còn slot tổng.
     /**
-     * Handles can book by staff for the Admin module.
-     *
-     * @return the operation result
+     * Checks whether staff can book into the schedule capacity.
+     * Staff booking can use reserved slots.
      */
     public boolean canBookByStaff(int scheduleId) {
         return canBookBySource(scheduleId, false);
     }
 
     // Cập nhật quota online riêng cho một ca trực.
-    /**
-     * Updates online quota for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean updateOnlineQuota(int scheduleId, int onlineQuota) {
         clearScheduleValidationMessage();
         if (!hasColumn("Doctor_Schedule", "online_quota")) {
@@ -2877,9 +2574,7 @@ public class AdminRepository {
     }
 
     /**
-     * Handles can book by source for the Admin module.
-     *
-     * @return the operation result
+     * Applies booking capacity rules for online and staff-created appointments.
      */
     private boolean canBookBySource(int scheduleId, boolean online) {
         boolean hasBookingSource = hasColumn("Appointment", "booking_source");
@@ -2888,8 +2583,9 @@ public class AdminRepository {
                 ? "LEFT JOIN ("
                 + "   SELECT schedule_id, COUNT(*) AS online_booked_count "
                 + "   FROM Appointment "
-                + "   WHERE schedule_id = ? AND LOWER(booking_source) = 'online' "
-                + "   AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') "
+                + "   WHERE schedule_id = ? "
+                + "   AND LOWER(LTRIM(RTRIM(COALESCE(booking_source, '')))) = 'online' "
+                + "   AND LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') "
                 + "   GROUP BY schedule_id"
                 + ") online_booked ON online_booked.schedule_id = ds.schedule_id "
                 : "OUTER APPLY (SELECT 0 AS online_booked_count) online_booked ";
@@ -2902,7 +2598,8 @@ public class AdminRepository {
                 + "LEFT JOIN ("
                 + "   SELECT schedule_id, COUNT(*) AS booked_count "
                 + "   FROM Appointment "
-                + "   WHERE schedule_id = ? AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') "
+                + "   WHERE schedule_id = ? "
+                + "   AND LOWER(LTRIM(RTRIM(COALESCE(status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') "
                 + "   GROUP BY schedule_id"
                 + ") booked ON booked.schedule_id = ds.schedule_id "
                 + onlineBookedJoin
@@ -2926,12 +2623,14 @@ public class AdminRepository {
                 }
                 String normalizedStatus = status.trim().toLowerCase(Locale.ROOT);
                 if ("cancelled".equals(normalizedStatus) || "expired".equals(normalizedStatus) || "full".equals(normalizedStatus)) {
+                    setScheduleValidationMessage("Ca này không còn nhận đặt lịch.");
                     return false;
                 }
 
                 int maxPatients = rs.getInt("max_patients");
                 int bookedCount = rs.getInt("booked_count");
                 if (bookedCount >= maxPatients) {
+                    setScheduleValidationMessage("Ca này đã đầy. Vui lòng chọn ca khác.");
                     return false;
                 }
 
@@ -2941,7 +2640,11 @@ public class AdminRepository {
 
                 int onlineQuota = getEffectiveOnlineQuota(rs.getObject("online_quota"), maxPatients);
                 int onlineBookedCount = rs.getInt("online_booked_count");
-                return onlineBookedCount < onlineQuota;
+                if (onlineBookedCount >= onlineQuota) {
+                    setScheduleValidationMessage("Ca này đã hết slot đặt online. Vui lòng chọn ca khác hoặc liên hệ lễ tân để được hỗ trợ.");
+                    return false;
+                }
+                return true;
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to evaluate booking availability for scheduleId=" + scheduleId, e);
@@ -2950,11 +2653,6 @@ public class AdminRepository {
     }
 
     // Lấy bác sĩ còn khả dụng để tái phân trong tình huống khẩn cấp.
-    /**
-     * Gets available doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAvailableDoctorsForEmergency(String department, Integer excludeDoctorId) {
         List<Map<String, Object>> doctors = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -2992,11 +2690,6 @@ public class AdminRepository {
     }
 
     // Lấy TẤT CẢ bác sĩ hoạt động để chọn tái điều phối (không lọc khoa).
-    /**
-     * Gets all active doctors for emergency for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getAllActiveDoctorsForEmergency(Integer excludeDoctorId) {
         List<Map<String, Object>> doctors = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -3030,11 +2723,6 @@ public class AdminRepository {
     }
 
     // Lấy bác sĩ có lịch không hủy trong ngày của appointment cần điều phối.
-    /**
-     * Gets emergency candidate doctors for appointment for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getEmergencyCandidateDoctorsForAppointment(int appointmentId, Integer excludeDoctorId) {
         List<Map<String, Object>> doctors = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -3077,11 +2765,6 @@ public class AdminRepository {
     }
 
     // Tái gán lịch hẹn sang bác sĩ khác trong luồng điều phối khẩn.
-    /**
-     * Handles reassign appointment to doctor for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean reassignAppointmentToDoctor(int appointmentId, int targetDoctorId) {
         String pickSameDayScheduleSql = "SELECT TOP 1 ds.schedule_id "
                 + "FROM Appointment ap "
@@ -3143,17 +2826,15 @@ public class AdminRepository {
         }
     }
 
-    // Đồng bộ trạng thái lịch trực theo thời gian và số appointment đang hoạt động.
     /**
-     * Handles refresh doctor schedule status from appointments for the Admin module.
-     *
-     * @return the operation result
+     * Refreshes schedule status from time and occupied capacity.
+     * Cancelled schedules stay Cancelled.
      */
     public int refreshDoctorScheduleStatusFromAppointments() {
         markLateWaitingAppointmentsAsNoShow();
         boolean hasBookingSource = hasColumn("Appointment", "booking_source");
         String onlineBookedExpression = hasBookingSource
-                ? "SUM(CASE WHEN LOWER(ap.booking_source) = 'online' AND LOWER(ap.status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') THEN 1 ELSE 0 END)"
+                ? "SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(ap.booking_source, '')))) = 'online' AND LOWER(LTRIM(RTRIM(COALESCE(ap.status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') THEN 1 ELSE 0 END)"
                 : "0";
 
         String sql = "UPDATE ds SET ds.status = CASE "
@@ -3168,8 +2849,8 @@ public class AdminRepository {
                 + "FROM Doctor_Schedule ds "
                 + "OUTER APPLY ("
                 + "   SELECT "
-                + "      SUM(CASE WHEN LOWER(ap.status) IN ('checked_in', 'in_progress', 'in-progress') THEN 1 ELSE 0 END) AS active_appointments, "
-                + "      SUM(CASE WHEN LOWER(ap.status) IN ('waiting', 'checked_in', 'in_progress', 'in-progress', 'completed') THEN 1 ELSE 0 END) AS booked_appointments, "
+                + "      SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(ap.status, '')))) IN ('checked_in', 'in_progress') THEN 1 ELSE 0 END) AS active_appointments, "
+                + "      SUM(CASE WHEN LOWER(LTRIM(RTRIM(COALESCE(ap.status, '')))) IN ('waiting', 'checked_in', 'in_progress', 'completed') THEN 1 ELSE 0 END) AS booked_appointments, "
                 + "      " + onlineBookedExpression + " AS online_booked_appointments "
                 + "   FROM Appointment ap "
                 + "   WHERE ap.schedule_id = ds.schedule_id "
@@ -3185,31 +2866,16 @@ public class AdminRepository {
     }
 
     // Lấy báo cáo doanh thu theo granularity đã chọn.
-    /**
-     * Gets revenue report for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getRevenueReport(String granularity, Integer year, Integer month, Integer day) {
         return getRevenueReport(granularity, year, month, day, null, null);
     }
 
     // Lấy báo cáo lượt khám theo granularity đã chọn.
-    /**
-     * Gets visit report for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getVisitReport(String granularity, Integer year, Integer month, Integer day) {
         return getVisitReport(granularity, year, month, day, null, null);
         }
 
         // Lấy báo cáo doanh thu theo khoảng ngày cụ thể.
-        /**
-         * Gets revenue report for the Admin module.
-         *
-         * @return the operation result
-         */
         public List<Map<String, Object>> getRevenueReport(String granularity,
             Integer year,
             Integer month,
@@ -3221,11 +2887,6 @@ public class AdminRepository {
         }
 
         // Lấy báo cáo lượt khám theo khoảng ngày cụ thể.
-        /**
-         * Gets visit report for the Admin module.
-         *
-         * @return the operation result
-         */
         public List<Map<String, Object>> getVisitReport(String granularity,
             Integer year,
             Integer month,
@@ -3237,11 +2898,6 @@ public class AdminRepository {
     }
 
     // Lấy chi tiết hóa đơn và lượt khám theo period để drill-down từ báo cáo.
-    /**
-     * Gets report detail by period for the Admin module.
-     *
-     * @return the operation result
-     */
     public Map<String, Object> getReportDetailByPeriod(String period) {
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> invoices = new ArrayList<>();
@@ -3363,11 +3019,6 @@ public class AdminRepository {
     // =========================
 
     // Lấy chi tiết item của một hóa đơn theo invoiceId.
-    /**
-     * Gets invoice items by invoice id for the Admin module.
-     *
-     * @return the operation result
-     */
     public List<Map<String, Object>> getInvoiceItemsByInvoiceId(String invoiceId) {
         List<Map<String, Object>> items = new ArrayList<>();
         if (invoiceId == null || invoiceId.trim().isEmpty()) {
@@ -3405,11 +3056,6 @@ public class AdminRepository {
     }
 
     // Truy vấn time-series dùng chung cho doanh thu/lượt khám.
-    /**
-     * Gets time series report for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Map<String, Object>> getTimeSeriesReport(String table,
             String timeColumn,
             String metricColumn,
@@ -3492,11 +3138,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa granularity về DAY/MONTH/YEAR.
-    /**
-     * Normalizes granularity for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeGranularity(String granularity) {
         String value = granularity == null ? "MONTH" : granularity.trim().toUpperCase(Locale.ROOT);
         if (!"DAY".equals(value) && !"MONTH".equals(value) && !"YEAR".equals(value)) {
@@ -3506,11 +3147,6 @@ public class AdminRepository {
     }
 
     // Chạy query count đơn giản và trả về số lượng.
-    /**
-     * Handles execute count for the Admin module.
-     *
-     * @return the operation result
-     */
     private int executeCount(String sql) {
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql); ResultSet rs = statement.executeQuery()) {
             if (rs.next()) {
@@ -3523,11 +3159,6 @@ public class AdminRepository {
     }
 
     // Chạy query decimal đơn giản và trả về giá trị tiền tệ.
-    /**
-     * Handles execute big decimal for the Admin module.
-     *
-     * @return the operation result
-     */
     private BigDecimal executeBigDecimal(String sql) {
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql); ResultSet rs = statement.executeQuery()) {
             if (rs.next()) {
@@ -3541,31 +3172,35 @@ public class AdminRepository {
     }
 
     // Kiểm tra một cột có tồn tại trong database hay không.
-    /**
-     * Handles has column for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean hasColumn(String tableName, String columnName) {
         String sql = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ?";
         try (Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, tableName);
-            statement.setString(2, columnName);
-            try (ResultSet rs = statement.executeQuery()) {
-                return rs.next();
-            }
+            return hasColumn(statement, tableName, columnName);
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, "Failed to check column existence", e);
             return false;
         }
     }
 
+    private boolean hasColumn(Connection connection, String tableName, String columnName) {
+        String sql = "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            return hasColumn(statement, tableName, columnName);
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, "Failed to check column existence", e);
+            return false;
+        }
+    }
+
+    private boolean hasColumn(PreparedStatement statement, String tableName, String columnName) throws SQLException {
+        statement.setString(1, tableName);
+        statement.setString(2, columnName);
+        try (ResultSet rs = statement.executeQuery()) {
+            return rs.next();
+        }
+    }
+
     // Truy vấn dữ liệu dashboard series cho biểu đồ đa kỳ.
-    /**
-     * Gets dashboard series for the Admin module.
-     *
-     * @return the operation result
-     */
     private List<Map<String, Object>> getDashboardSeries(String table,
             String timeColumn,
             String metricColumn,
@@ -3625,11 +3260,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa role về lowercase để so khớp danh sách hợp lệ.
-    /**
-     * Normalizes role for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeRole(String role) {
         if (role == null) {
             return null;
@@ -3639,11 +3269,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa trạng thái tài khoản về lowercase.
-    /**
-     * Normalizes account status for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeAccountStatus(String status) {
         if (status == null) {
             return null;
@@ -3653,11 +3278,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa loại dịch vụ y tế.
-    /**
-     * Normalizes service type for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeServiceType(String serviceType) {
         if (serviceType == null) {
             return null;
@@ -3667,11 +3287,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa trạng thái dịch vụ y tế.
-    /**
-     * Normalizes service status for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeServiceStatus(String status) {
         if (status == null) {
             return null;
@@ -3681,11 +3296,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa trạng thái lịch trực theo danh sách cho phép.
-    /**
-     * Normalizes schedule status values used by Admin screens.
-     *
-     * @return the operation result
-     */
     private String normalizeScheduleStatus(String status) {
         if (status == null) {
             return null;
@@ -3695,11 +3305,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa nguồn đặt lịch cho Appointment.booking_source.
-    /**
-     * Normalizes booking source values used by appointment statistics.
-     *
-     * @return the operation result
-     */
     private String normalizeBookingSource(String bookingSource) {
         if (bookingSource == null) {
             return null;
@@ -3709,52 +3314,35 @@ public class AdminRepository {
     }
 
     // Kiểm tra loại dịch vụ có hợp lệ hay không.
-    /**
-     * Handles is allowed service type for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean isAllowedServiceType(String serviceType) {
         return normalizeServiceType(serviceType) != null;
     }
 
     // Kiểm tra trạng thái dịch vụ có hợp lệ hay không.
-    /**
-     * Handles is allowed service status for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean isAllowedServiceStatus(String status) {
         return normalizeServiceStatus(status) != null;
     }
 
     // Kiểm tra trạng thái lịch trực có hợp lệ hay không.
-    /**
-     * Handles is allowed schedule status for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean isAllowedScheduleStatus(String status) {
         return normalizeScheduleStatus(status) != null;
     }
 
     /**
-     * Gets default online quota for the Admin module.
-     *
-     * @return the operation result
+     * Calculates the default online quota as 60% of max patients.
+     * Keeps reserved slots for receptionist and walk-in booking.
      */
     private int getDefaultOnlineQuota(int maxPatients) {
         if (maxPatients <= 1) {
             return Math.max(0, maxPatients);
         }
-        return Math.max(0, maxPatients - 1);
+        int quota = (int) Math.ceil(maxPatients * 0.6);
+        if (quota >= maxPatients) {
+            quota = maxPatients - 1;
+        }
+        return Math.max(1, quota);
     }
 
-    /**
-     * Gets effective online quota for the Admin module.
-     *
-     * @return the operation result
-     */
     private int getEffectiveOnlineQuota(Object onlineQuotaValue, int maxPatients) {
         if (onlineQuotaValue instanceof Number) {
             int quota = ((Number) onlineQuotaValue).intValue();
@@ -3765,11 +3353,6 @@ public class AdminRepository {
         return getDefaultOnlineQuota(maxPatients);
     }
 
-    /**
-     * Checks whether an appointment status should count against capacity.
-     *
-     * @return the operation result
-     */
     private boolean isCountedAppointmentStatus(String status) {
         if (status == null) {
             return false;
@@ -3782,22 +3365,12 @@ public class AdminRepository {
                 || "completed".equals(value);
     }
 
-    /**
-     * Checks whether an appointment should count against online quota.
-     *
-     * @return the operation result
-     */
     private boolean isCountedOnlineAppointmentStatus(String status, String bookingSource) {
         return isCountedAppointmentStatus(status) && "online".equalsIgnoreCase(bookingSource == null ? null : bookingSource.trim());
     }
 
     // Lấy và xóa message lỗi validation gần nhất để servlet trả ra UI.
     // Lấy message validation gần nhất để servlet đẩy ra UI.
-    /**
-     * Handles consume schedule validation message for the Admin module.
-     *
-     * @return the operation result
-     */
     public String consumeScheduleValidationMessage() {
         String message = scheduleValidationMessage.get();
         scheduleValidationMessage.remove();
@@ -3807,11 +3380,6 @@ public class AdminRepository {
     // TODO: integrate with Doctor workflow when complete action is wired.
     // Requires Appointment.consultation_start_time to enforce minimum consultation duration.
     // Chuẩn bị kiểm tra thời gian khám tối thiểu trước khi cho phép hoàn tất.
-    /**
-     * Handles can complete consultation by minimum time for the Admin module.
-     *
-     * @return the operation result
-     */
     public boolean canCompleteConsultationByMinimumTime(int appointmentId, int minMinutes) {
         if (appointmentId <= 0 || minMinutes <= 0) {
             return false;
@@ -3840,28 +3408,16 @@ public class AdminRepository {
         return false;
     }
 
-    // Lưu message lỗi validation vào context của request hiện tại.
-    /**
-     * Handles set schedule validation message for the Admin module.
-     */
+    // Keep the last schedule validation message for the current request flow.
     private void setScheduleValidationMessage(String message) {
         scheduleValidationMessage.set(message == null ? "" : message);
     }
 
-    // Xóa message lỗi validation trước khi chạy một thao tác mới.
-    /**
-     * Handles clear schedule validation message for the Admin module.
-     */
     private void clearScheduleValidationMessage() {
         scheduleValidationMessage.remove();
     }
 
     // Lấy doctor_id tương ứng với schedule_id để validate update.
-    /**
-     * Gets doctor id by schedule id for the Admin module.
-     *
-     * @return the operation result
-     */
     private Integer getDoctorIdByScheduleId(Connection connection, int scheduleId) throws SQLException {
         String sql = "SELECT doctor_id FROM Doctor_Schedule WHERE schedule_id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -3875,12 +3431,8 @@ public class AdminRepository {
         return null;
     }
 
-    // Validate tập trung các hard constraints cho create/update/AI batch insert.
-    // Gom các constraint lịch trực vào một chỗ để dùng chung cho create/update/AI.
     /**
-     * Validates schedule constraints before Admin processing continues.
-     *
-     * @return the operation result
+     * Validates hard schedule constraints shared by manual and AI scheduling.
      */
     private String validateScheduleConstraints(Connection connection,
             int doctorId,
@@ -3914,11 +3466,6 @@ public class AdminRepository {
 
     // Đếm số ca trong ngày của bác sĩ (không tính Cancelled).
     // Đếm số ca trong ngày của bác sĩ, bỏ qua những ca đã hủy.
-    /**
-     * Handles count non cancelled schedules in day for the Admin module.
-     *
-     * @return the operation result
-     */
     private int countNonCancelledSchedulesInDay(Connection connection,
             int doctorId,
             Date workDate,
@@ -3950,11 +3497,6 @@ public class AdminRepository {
 
     // Kiểm tra overlap theo khoảng thời gian thực trong cùng ngày.
     // Kiểm tra ca mới có chồng lấp với bất kỳ ca nào khác trong cùng ngày không.
-    /**
-     * Handles has schedule overlap for the Admin module.
-     *
-     * @return the operation result
-     */
     private boolean hasScheduleOverlap(Connection connection,
             int doctorId,
             Date workDate,
@@ -3999,11 +3541,6 @@ public class AdminRepository {
     }
 
     // Chuẩn hóa chuỗi timeSlot về dạng HH:mm-HH:mm không có khoảng trắng thừa.
-    /**
-     * Normalizes time slot for consistent Admin processing.
-     *
-     * @return the operation result
-     */
     private String normalizeTimeSlot(String timeSlot) {
         if (timeSlot == null) {
             return null;
@@ -4014,11 +3551,6 @@ public class AdminRepository {
     }
 
     // Tách timeSlot thành giờ bắt đầu và kết thúc để so sánh overlap.
-    /**
-     * Handles parse time slot range for the Admin module.
-     *
-     * @return the operation result
-     */
     private LocalTime[] parseTimeSlotRange(String timeSlot) {
         if (timeSlot == null) {
             return null;
@@ -4040,11 +3572,6 @@ public class AdminRepository {
     }
 
     // Viết hoa chữ cái đầu, dùng cho một số nhãn hiển thị nội bộ.
-    /**
-     * Handles to title case for the Admin module.
-     *
-     * @return the operation result
-     */
     private String toTitleCase(String value) {
         if (value == null || value.isBlank()) {
             return "";
@@ -4053,10 +3580,6 @@ public class AdminRepository {
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
-    // Bind tham số PreparedStatement theo đúng kiểu dữ liệu Java.
-    /**
-     * Handles bind params for the Admin module.
-     */
     private void bindParams(PreparedStatement statement, List<Object> params) throws SQLException {
         for (int i = 0; i < params.size(); i++) {
             Object param = params.get(i);
@@ -4075,5 +3598,6 @@ public class AdminRepository {
         }
     }
 }
+
 
 

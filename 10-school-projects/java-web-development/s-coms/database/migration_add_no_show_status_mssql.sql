@@ -16,8 +16,8 @@ END;
 UPDATE dbo.Doctor_Schedule
 SET online_quota = CASE
     WHEN max_patients <= 1 THEN max_patients
-    WHEN max_patients - 1 < 0 THEN 0
-    ELSE max_patients - 1
+    WHEN CEILING(max_patients * 0.6) >= max_patients THEN max_patients - 1
+    ELSE CAST(CEILING(max_patients * 0.6) AS INT)
 END
 WHERE online_quota IS NULL;
 

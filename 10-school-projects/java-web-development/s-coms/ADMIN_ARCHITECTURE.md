@@ -1,182 +1,774 @@
-# Kiến trúc module Admin — S-COMS
+# S-COMS Admin Architecture
 
-Tài liệu này tóm tắt cấu trúc, luồng dữ liệu, và các điểm cần chú ý về phần **Admin** trong dự án S-COMS.
+This document explains the Admin area of S-COMS for humans and AI assistants. Read this file before changing Admin code.
 
-**Mục tiêu**: khi nhìn vào file này bạn sẽ hiểu nhanh nơi chứa view, controller, data access, cấu hình DB, và các thay đổi bảo mật quan trọng.
+The project is a Java Servlet/JSP web application using SQL Server and Tomcat 10.1/Jakarta.
 
----
+## 1. Admin Module Scope
 
-## 1. Tổng quan thành phần
+The Admin module handles:
 
-- Giao diện (Views): các trang quản trị nằm trong thư mục `web/admin` (ví dụ: `dashboard.jsp`, `users.jsp`, `reports.jsp`).
-  - Đường dẫn: [web/admin](web/admin)
-- Controller (Servlets): xử lý request/response, xác thực, ủy quyền.
-  - Các servlet chính liên quan tới admin: `AuthServlet`, `AdminServlet`, có trong `src/java/com/diabetes/monitoring/servlet/`.
-  - Ví dụ: [src/java/com/diabetes/monitoring/servlet/AuthServlet.java](src/java/com/diabetes/monitoring/servlet/AuthServlet.java#L1)
-- Data Access (DAO): truy cập DB cho account, báo cáo, lịch, v.v.
-  - Thư mục: `src/java/com/diabetes/monitoring/dao/` (ví dụ `UserDAO.java`, `AdminDAO.java`) — tham chiếu: [src/java/com/diabetes/monitoring/dao](src/java/com/diabetes/monitoring/dao)
-- Mô hình (Model): các POJO chứa dữ liệu (User, HealthRecord, ChatMessage)
-  - Thư mục: `src/java/com/diabetes/monitoring/model/`
-- Tiện ích (Utils): helper cho DB và bảo mật
-  - `DatabaseConnection`: quản lý kết nối JDBC và tải cấu hình DB — [src/java/com/diabetes/monitoring/util/DatabaseConnection.java](src/java/com/diabetes/monitoring/util/DatabaseConnection.java#L1)
-  - `PasswordUtil`: PBKDF2 hashing, verify, detect legacy SHA-256 — [src/java/com/diabetes/monitoring/util/PasswordUtil.java](src/java/com/diabetes/monitoring/util/PasswordUtil.java#L1)
+- Dashboard analytics and quick operational data.
+- Account management for Admin, Receptionist, Doctor, and Patient accounts.
+- Medical service catalog management.
+- Doctor schedule management, manual scheduling, transfer, cancellation, and AI scheduling.
+- Patient flow for today's appointments, check-in, start consultation, complete consultation, and no-show handling.
+- Emergency routing when a patient needs to be reassigned to another doctor.
+- Revenue and visit reports.
 
-## 2. Luồng chính (Admin login → trang quản trị)
+Main URL:
 
-1. Người dùng gửi POST tới `AuthServlet` với email/password.
-2. `AuthServlet` gọi `UserDAO` để lấy password_hash từ DB.
-3. `PasswordUtil.matches()` kiểm tra mật khẩu:
-   - Nếu stored là `pbkdf2$...` → kiểm tra PBKDF2.
-   - Nếu stored là 64-hex → so sánh SHA-256 (legacy).
-4. Nếu khớp và `PasswordUtil.needsRehash()` trả true → `UserDAO` cập nhật password_hash mới (PBKDF2) để tự động migrate.
-5. Sau login thành công, `AuthServlet` invalidates session cũ và tạo session mới để ngăn session fixation.
-6. Truy cập các servlet admin tiếp theo tùy theo role; các servlet kiểm tra role/permissions trước khi trả view.
+- `/admin`
 
-## 3. Cấu hình DB & cách runtime lấy secrets
+Main controller:
 
-- File cấu hình (local dev): `src/db.properties`. Nội dung tối thiểu:
-  - `db.url` (ví dụ: `jdbc:sqlserver://host:1433;databaseName=project_SWP;encrypt=true;trustServerCertificate=true;`)
-  - `db.user`
-  - `db.password`
-- Đã thêm `.gitignore` để tránh commit: `src/db.properties` và `db.properties`.
-- `DatabaseConnection` cố gắng load theo thứ tự:
-  1. classpath resource `db.properties` (ví dụ `WEB-INF/classes/db.properties`)
-  2. filesystem: `src/db.properties` hoặc `db.properties`
-  3. (fallback) — nếu không tìm thấy thì throw IllegalStateException (fail-fast). Xem file: [src/java/com/diabetes/monitoring/util/DatabaseConnection.java](src/java/com/diabetes/monitoring/util/DatabaseConnection.java#L1)
-- Bạn có thể thay thế bằng env vars (`DB_URL`, `DB_USER`, `DB_PASSWORD`) nếu muốn — code hiện tại có hỗ trợ bằng cách chỉnh thêm nếu cần.
+- `src/java/com/diabetes/monitoring/admin/AdminServlet.java`
 
-## 4. Bảo mật & chuyển đổi mật khẩu
+Views:
 
-- `PasswordUtil` dùng PBKDF2WithHmacSHA256, iterations = 100000, salt = 16 bytes, dkLen = 32 bytes.
-- Format lưu trong DB: `pbkdf2$<iterations>$<base64(salt)>$<base64(hash)>`.
-- `UserDAO` đã được chỉnh để tự động rehash khi người dùng đăng nhập bằng mật khẩu cũ (SHA-256 legacy).
-- `admin_setup.py` đã được cập nhật để sinh và ghi PBKDF2 hash cho account seed.
-  - Đường dẫn: [admin_setup.py](admin_setup.py#L1)
+- `web/admin/dashboard.jsp`
+- `web/admin/users.jsp`
+- `web/admin/services.jsp`
+- `web/admin/schedule-management.jsp`
+- `web/admin/reports.jsp`
+- `web/admin/exception-routing.jsp`
+- `web/admin/health-records.jsp`
+- `web/admin/fragments/sidebar.jspf`
 
-## 5. Frontend admin
+## 2. Package Layout
 
-- Các trang quản trị chính: `web/admin/*.jsp` (dashboard, users, reports, schedules, services).
-- Fragment sidebar: `web/admin/fragments/sidebar.jspf` — dùng chung cho navigation.
-- Form thay đổi mật khẩu/ tạo user: gửi trường `password` → backend sẽ hash trước khi lưu.
+Current Admin packages:
 
-## 6. Build & Deploy
-
-- Build dùng Ant (NetBeans layout). Main files:
-  - `build.xml` (tùy chỉnh): [build.xml](build.xml#L1)
-  - `nbproject/build-impl.xml` (generated)
-- Tôi đã thêm một target `-post-compile` trong `build.xml` để copy `src/db.properties` vào `${build.classes.dir}` khi build (để file vào `WEB-INF/classes`).
-- Nếu không dùng Ant local, bạn có thể:
-  - đặt `web/WEB-INF/classes/db.properties` thủ công trước khi start Tomcat, hoặc
-  - thiết lập biến môi trường `DB_URL/DB_USER/DB_PASSWORD` và chỉnh `DatabaseConnection` để ưu tiên env vars.
-
-## 7. Vấn đề thường gặp & cách debug
-
-- Lỗi khởi động: `NoClassDefFoundError` hoặc `ExceptionInInitializerError` kèm `IllegalStateException: db.properties not found` → nguyên nhân: `DatabaseConnection` fail-fast khi không tìm cấu hình.
-  - Fix nhanh: copy `src/db.properties` vào `web/WEB-INF/classes/` hoặc set env vars.
-- Lỗi kết nối SQL Server: kiểm tra driver (`com.microsoft.sqlserver.jdbc.SQLServerDriver`) và chuỗi URL (cần `encrypt=true;trustServerCertificate=true;` cho kết nối TLS).
-- Nếu user seed không đăng nhập: chạy `admin_setup.py` sau khi đã cấu hình DB để upsert admin account (script đã dùng PBKDF2).
-
-## 8. Nơi mở rộng/ chỉnh sửa
-
-- Thêm RBAC kiểm tra mạnh hơn: kiểm tra role trong Filter trước khi servlet xử lý.
-- Chuyển secrets khỏi file vào Secret Manager hoặc biến môi trường cho môi trường production.
-- Giám sát đăng nhập bất thường + lock account khi quá nhiều lần thất bại.
-
-## 9. Tài liệu tham chiếu nhanh (file quan trọng)
-
-- `DatabaseConnection`: [src/java/com/diabetes/monitoring/util/DatabaseConnection.java](src/java/com/diabetes/monitoring/util/DatabaseConnection.java#L1)
-- `PasswordUtil`: [src/java/com/diabetes/monitoring/util/PasswordUtil.java](src/java/com/diabetes/monitoring/util/PasswordUtil.java#L1)
-- Servlets: [src/java/com/diabetes/monitoring/servlet](src/java/com/diabetes/monitoring/servlet)
-- DAOs: [src/java/com/diabetes/monitoring/dao](src/java/com/diabetes/monitoring/dao)
-- Admin views: [web/admin](web/admin)
-- Admin seed script: [admin_setup.py](admin_setup.py#L1)
-
----
-
-Nếu bạn muốn, tôi có thể:
-- Thêm sơ đồ luồng (mermaid) vào file này, hoặc
-- Mở rộng phần "Debug" với các câu lệnh log/stacktrace thực tế, hoặc
-- Sinh checklist deploy an toàn (env vars, secrets, migrations).
-
-Chọn bước tiếp theo: sơ đồ/ debug checklist/ deploy checklist.
-
----
-
-## 10. Sơ đồ luồng (Mermaid)
-
-Dưới đây là sơ đồ luồng chính khi Admin đăng nhập và truy cập dashboard.
-
-```mermaid
-flowchart TD
-  A[Admin - Login form] -->|POST /auth| B(AuthServlet)
-  B --> C{Fetch user row}
-  C --> D[UserDAO: SELECT password_hash]
-  D --> E[PasswordUtil.matches()]
-  E -->|legacy SHA-256| F[Rehash -> UserDAO.updatePassword()]
-  E -->|OK| G[Invalidate session, create new session]
-  G --> H[Set session attributes (userId, role)]
-  H --> I[Redirect to /admin/dashboard]
-  I --> J[AdminServlet checks role -> render dashboard.jsp]
-
-  subgraph DB
-    D
-  end
-
-  style DB fill:#f9f,stroke:#333,stroke-width:1px
+```text
+com.diabetes.monitoring.admin
+├── AdminServlet.java
+├── analytics
+├── management
+├── scheduling
+├── patientflow
+└── common
 ```
 
----
+### `admin`
 
-## 11. Mở rộng phần Debug — lỗi thường gặp và cách sửa
+`AdminServlet` is the only Admin entry servlet. It checks session access and delegates each `action` to the correct handler.
 
-- Lỗi: `ExceptionInInitializerError` / `IllegalStateException: db.properties not found on classpath`
-  - Nguyên nhân: `DatabaseConnection` fail-fast khi không tìm thấy file cấu hình.
-  - Fix nhanh:
+Important rules:
 
-```powershell
-# Copy config vào classpath của webapp
-copy .\src\db.properties .\web\WEB-INF\classes\db.properties
+- Only users with role `admin` can access this servlet.
+- POST requests must pass CSRF validation through `CsrfUtil.isValid(request)`.
+- JSON/AJAX requests receive JSON errors.
+- Normal page requests redirect to login or dashboard depending on context.
 
-# Hoặc set biến môi trường cho phiên hiện tại
-$env:DB_URL = "jdbc:sqlserver://db-host:1433;databaseName=project_SWP;encrypt=true;trustServerCertificate=true;"
-$env:DB_USER = "your_user"
-$env:DB_PASSWORD = "your_password"
+### `admin.analytics`
 
-# Build project (nếu có ant)
-ant -f build.xml
+Files:
 
-# Start Tomcat service (nếu service tên Tomcat10)
-Start-Service -Name Tomcat10
-Get-Service -Name Tomcat10
+- `AdminAnalyticsHandler.java`
+- `AdminAnalyticsService.java`
+- `AdminAnalyticsDAO.java`
+
+Internal classes in these files:
+
+- `AdminDashboardHandler`
+- `AdminDashboardService`
+- `AdminDashboardDAO`
+- `AdminReportHandler`
+- `AdminReportService`
+- `AdminReportDAO`
+
+Responsibilities:
+
+- Load dashboard summary cards.
+- Load today's clinic queue status.
+- Load chart data for revenue, visits, patient flow, appointment statuses.
+- Load report pages and report detail modals.
+- Load invoice item detail for reports.
+
+Business rules:
+
+- Revenue only counts `Invoice.status = 'Paid'`.
+- Visit counts only completed appointments.
+- Dashboard queue excludes cancelled and no-show patients from active load.
+
+### `admin.management`
+
+Files:
+
+- `AdminManagementHandler.java`
+- `AdminManagementService.java`
+- `AdminManagementDAO.java`
+
+Internal classes in these files:
+
+- `AdminAccountHandler`
+- `AdminAccountService`
+- `AdminAccountDAO`
+- `AdminMedicalServiceHandler`
+- `AdminMedicalServiceService`
+- `AdminMedicalServiceDAO`
+
+Responsibilities:
+
+- List, filter, create, update, lock, reactivate, and delete accounts.
+- Edit role-specific profile data for Patient and Doctor accounts.
+- Manage medical services: create, update, activate/deactivate, delete.
+- Serve quick account and service data for dashboard widgets.
+
+Business rules:
+
+- Allowed roles are validated before insert/update.
+- Allowed account statuses are validated before insert/update.
+- Deleting an account must respect dependent domain data.
+- Medical service status is `Active` or `Inactive`.
+- Medical service type is usually `Examination` or `Lab_Test`.
+
+### `admin.scheduling`
+
+Files:
+
+- `AdminSchedulingHandler.java`
+- `AdminSchedulingService.java`
+- `AdminSchedulingDAO.java`
+- `AdminScheduleConstraintValidator.java`
+
+Internal classes in these files:
+
+- `AdminScheduleHandler`
+- `AdminScheduleService`
+- `AdminScheduleDAO`
+- `AdminAiSchedulingHandler`
+- `AdminAiSchedulingService`
+- `AdminAiSchedulingDAO`
+
+Responsibilities:
+
+- Display and filter doctor schedules.
+- Create, update, delete, cancel, and transfer schedules.
+- Load schedule detail and appointment list for a schedule.
+- Provide transfer candidates.
+- Create schedules using Gemini AI suggestions plus backend validation.
+- Validate schedule constraints before insertion.
+
+Important business rules:
+
+- A doctor cannot have duplicate schedule slots.
+- A doctor cannot have overlapping schedule slots.
+- Schedule max patients must be positive.
+- Online quota defaults to 60% of `max_patients`, while keeping reserved slots for staff and walk-in booking.
+- A schedule with appointments should be cancelled instead of hard deleted.
+- AI scheduling suggestions must be validated by backend constraints before insert.
+- Local fallback scheduling is used when Gemini fails or returns invalid suggestions.
+
+Online quota formula:
+
+```java
+if (maxPatients <= 1) {
+    onlineQuota = maxPatients;
+} else {
+    onlineQuota = (int) Math.ceil(maxPatients * 0.6);
+    if (onlineQuota >= maxPatients) {
+        onlineQuota = maxPatients - 1;
+    }
+    onlineQuota = Math.max(1, onlineQuota);
+}
+reservedSlots = maxPatients - onlineQuota;
 ```
 
-- Lỗi: `com.microsoft.sqlserver.jdbc.SQLServerException: The certificate chain was issued by an authority that is not trusted.`
-  - Nguyên nhân: kết nối TLS yêu cầu certificate trust.
-  - Fix: đảm bảo chuỗi kết nối có `encrypt=true;trustServerCertificate=true;` trong `db.url`, hoặc cài chứng chỉ CA phù hợp.
+Expected examples:
 
-- Lỗi: `org.postgresql.util.PSQLException` hoặc driver không tìm thấy
-  - Nguyên nhân: driver JDBC không có trong `WEB-INF/lib`.
-  - Fix: đảm bảo thư viện JDBC driver có trong `lib/` và được copy vào `WEB-INF/lib` khi build.
+| max_patients | online_quota | reserved_slots |
+| ---: | ---: | ---: |
+| 1 | 1 | 0 |
+| 2 | 1 | 1 |
+| 3 | 2 | 1 |
+| 4 | 3 | 1 |
+| 5 | 3 | 2 |
+| 8 | 5 | 3 |
+| 10 | 6 | 4 |
 
-### Kiểm tra log startup và stacktrace
+### `admin.patientflow`
 
-- Xem file catalina.out hoặc Windows Event Log (service) để lấy stacktrace đầy đủ.
-- Từ stacktrace, tìm lớp lỗi đầu tiên trong mã nguồn của dự án (ví dụ: `com.diabetes.monitoring.util.DatabaseConnection`) — đó thường là nguyên nhân gốc.
+Files:
 
-### Kiểm tra nhanh bằng lệnh
+- `AdminPatientFlowHandler.java`
+- `AdminPatientFlowService.java`
+- `AdminPatientFlowDAO.java`
 
-```powershell
-# Hiển thị service Tomcat hiện có
-Get-Service | Where-Object { $_.DisplayName -like '*Tomcat*' } | Format-Table Name,DisplayName,Status
+Internal classes in these files:
 
-# Lấy Path của service (để xác định CATALINA_HOME)
-Get-CimInstance -ClassName Win32_Service -Filter "Name='Tomcat10'" | Select-Object Name,PathName
+- `AdminAppointmentHandler`
+- `AdminAppointmentWorkflowService`
+- `AdminAppointmentDAO`
+- `AdminEmergencyRoutingHandler`
+- `AdminEmergencyRoutingService`
+- `AdminEmergencyRoutingDAO`
 
-# Kiểm tra file properties trên classpath deploy
-Test-Path .\web\WEB-INF\classes\db.properties
-Get-Content .\web\WEB-INF\classes\db.properties
+Responsibilities:
+
+- Load today's appointment list.
+- Load today's waiting patients.
+- Load a doctor's queue detail.
+- Load appointments inside a selected schedule.
+- Check in appointments.
+- Start appointments.
+- Complete appointments.
+- Mark late waiting appointments as `No_Show`.
+- Load emergency routing page and candidate doctors.
+- Reassign appointments to another doctor.
+
+Appointment workflow:
+
+```text
+Waiting -> Checked_In -> In_Progress -> Completed
+Waiting after cutoff -> No_Show
+Any active appointment may become Cancelled through cancellation flows.
 ```
 
----
+Slot-counting rules:
 
-Đã bổ sung sơ đồ và mở rộng hướng debug. Nếu bạn muốn, tôi sẽ (1) cập nhật checklist deploy an toàn hoặc (2) chèn ví dụ stacktrace mẫu và chỉ ra file/line cụ thể trong repo. Chọn 1 hoặc 2.
+- Counted statuses: `Waiting`, `Checked_In`, `In_Progress`, `Completed`.
+- Not counted: `Cancelled`, `No_Show`.
+- `bookedCount` counts all counted statuses.
+- `onlineBookedCount` counts counted statuses where booking source is online.
+
+Online booking rule:
+
+- Patient online booking is blocked when `onlineBookedCount >= onlineQuota`.
+- Staff, receptionist, and walk-in booking may still use reserved slots while `bookedCount < maxPatients`.
+
+### `admin.common`
+
+Files:
+
+- `AdminRepository.java`
+- `AdminJsonUtil.java`
+- `AdminStatusMapper.java`
+- `ApiResponseDTO.java`
+- `ReportSeriesDTO.java`
+
+Responsibilities:
+
+- `AdminRepository`: central SQL access for Admin read/write operations.
+- `AdminJsonUtil`: manual JSON serialization helpers for Admin AJAX responses.
+- `AdminStatusMapper`: status normalization, counting status rules, and Vietnamese labels.
+- `ApiResponseDTO`: simple JSON response model.
+- `ReportSeriesDTO`: report chart point with `period` and `value`.
+
+Important note:
+
+- Most Admin DAO classes are thin wrappers around `AdminRepository`.
+- `AdminRepository` is currently large because it centralizes Admin SQL after package refactor.
+- If refactoring later, split it by module: dashboard, reports, accounts, services, schedules, appointment workflow, emergency routing.
+
+## 3. Request Routing
+
+All Admin pages and AJAX calls go through `/admin?action=...`.
+
+### GET actions
+
+| Action | Handler | View/Response |
+| --- | --- | --- |
+| empty, `dashboard` | `analyticsHandler.loadDashboard` | `dashboard.jsp` |
+| `reports` | `analyticsHandler.loadReports` | `reports.jsp` |
+| `getReportDetail` | `analyticsHandler.loadReportDetailByPeriod` | JSON |
+| `getInvoiceItems` | `analyticsHandler.loadInvoiceItems` | JSON |
+| `listUsers` | `managementHandler.loadAccounts` | `users.jsp` |
+| `getAccountProfile` | `managementHandler.loadAccountProfile` | JSON |
+| `manageServices` | `managementHandler.loadServices` | `services.jsp` |
+| `dashboardChartData` | `analyticsHandler.loadDashboardChartData` | JSON |
+| `quickAccountsData` | `analyticsHandler.loadQuickAccountsData` | JSON |
+| `quickRevenueData` | `analyticsHandler.loadQuickRevenueData` | JSON |
+| `quickServicesData` | `analyticsHandler.loadQuickServicesData` | JSON |
+| `quickAppointmentsData` | `analyticsHandler.loadQuickAppointmentsData` | JSON |
+| `schedule`, `manageSchedules` | `schedulingHandler.loadSchedules` | `schedule-management.jsp` |
+| `getSchedule` | `schedulingHandler.loadScheduleDetail` | JSON |
+| `getTransferCandidates` | `schedulingHandler.loadTransferCandidates` | JSON |
+| `exception`, `viewHealthRecords` | `patientFlowHandler.loadExceptionRouting` | `exception-routing.jsp` |
+| `getDoctorQueueDetail` | `patientFlowHandler.loadDoctorQueueDetail` | JSON |
+| `getTodayAppointments` | `patientFlowHandler.loadTodayAppointments` | JSON |
+| `getTodayWaiting` | `patientFlowHandler.loadTodayWaiting` | JSON |
+| `scheduleAppointments` | `patientFlowHandler.loadScheduleAppointments` | JSON |
+| `aiCreateSchedules` | `schedulingHandler.aiCreateSchedules` | JSON |
+
+### POST actions
+
+| Action | Handler | Purpose |
+| --- | --- | --- |
+| `createAccount` | `managementHandler.createAccount` | Create account |
+| `updateAccountRole` | `managementHandler.updateAccountRole` | Change role |
+| `lockAccount` | `managementHandler.updateAccountStatus(..., "locked")` | Lock account |
+| `reactivateAccount` | `managementHandler.updateAccountStatus(..., "active")` | Reactivate account |
+| `deleteAccount` | `managementHandler.deleteAccount` | Delete account |
+| `updateAccountProfile` | `managementHandler.updateAccountProfile` | Edit profile by role |
+| `ajaxToggleAccountStatus` | `managementHandler.ajaxToggleAccountStatus` | JSON status toggle |
+| `createService` | `managementHandler.createService` | Create medical service |
+| `updateService` | `managementHandler.updateService` | Update medical service |
+| `updateServiceStatus`, `ajaxToggleServiceStatus` | `managementHandler.updateServiceStatus` | Status toggle |
+| `deleteService` | `managementHandler.deleteService` | Delete service |
+| `createSchedule` | `schedulingHandler.createSchedule` | Create doctor schedule |
+| `updateSchedule` | `schedulingHandler.updateSchedule` | Update doctor schedule |
+| `deleteSchedule` | `schedulingHandler.deleteSchedule` | Delete schedule |
+| `cancelSchedule` | `schedulingHandler.cancelSchedule` | Cancel schedule |
+| `transferSchedule` | `schedulingHandler.transferSchedule` | Transfer schedule to another doctor |
+| `aiCreateSchedules` | `schedulingHandler.aiCreateSchedules` | Create AI-generated schedules |
+| `emergencyReassign` | `patientFlowHandler.emergencyReassign` | Reassign appointment |
+| `checkInAppointment` | `patientFlowHandler.updateAppointmentWorkflowStatus(..., "checkIn")` | Waiting -> Checked_In |
+| `startAppointment` | `patientFlowHandler.updateAppointmentWorkflowStatus(..., "start")` | Checked_In -> In_Progress |
+| `completeAppointment` | `patientFlowHandler.updateAppointmentWorkflowStatus(..., "complete")` | In_Progress -> Completed |
+
+## 4. View Map
+
+### `dashboard.jsp`
+
+Shows:
+
+- Account summary.
+- Revenue and visit summary.
+- Today clinic queue.
+- Today schedule list.
+- Patient flow chart.
+- Revenue by service type.
+- Appointment status chart.
+- Quick data modals.
+
+Main data source:
+
+- `AdminAnalyticsHandler`
+- `AdminAnalyticsService`
+- `AdminRepository`
+
+### `users.jsp`
+
+Shows:
+
+- Account list with search, role filter, and status filter.
+- Create account form.
+- Lock/reactivate/delete actions.
+- Edit account profile modal.
+
+Main data source:
+
+- `AdminManagementHandler`
+- `AdminManagementService`
+- `AdminRepository`
+
+### `services.jsp`
+
+Shows:
+
+- Medical service list.
+- Create service form.
+- Edit service modal.
+- Activate/deactivate/delete actions.
+
+Main data source:
+
+- `AdminManagementHandler`
+- `AdminManagementService`
+- `AdminRepository`
+
+### `schedule-management.jsp`
+
+Shows:
+
+- Schedule filters by department, doctor, date.
+- Schedule table with load, online quota, reserved slots, and status.
+- Create/edit schedule modal.
+- Transfer schedule modal.
+- AI scheduling panel.
+- Schedule appointment modal.
+
+Main data source:
+
+- `AdminSchedulingHandler`
+- `AdminSchedulingService`
+- `AdminScheduleConstraintValidator`
+- `AdminRepository`
+
+Important UI display rules:
+
+- Online quota column displays `onlineBookedCount / onlineQuota`.
+- Reserved slots display `max_patients - online_quota`.
+- Badge:
+  - `Còn slot online` when `onlineBookedCount < onlineQuota`.
+  - `Hết slot online` when `onlineBookedCount == onlineQuota`.
+  - `Vượt quota online` when `onlineBookedCount > onlineQuota`.
+
+### `reports.jsp`
+
+Shows:
+
+- Revenue report.
+- Visit report.
+- Report charts by day/month/year.
+- Detail modal by selected period.
+- Invoice item modal.
+
+Main data source:
+
+- `AdminAnalyticsHandler`
+- `AdminReportService`
+- `AdminRepository`
+
+Report rules:
+
+- Revenue counts paid invoices only.
+- Visit report counts completed appointments only.
+
+### `exception-routing.jsp`
+
+Shows:
+
+- Appointments needing routing attention.
+- Candidate doctors for reassignment.
+- Emergency reassignment form.
+
+Main data source:
+
+- `AdminPatientFlowHandler`
+- `AdminEmergencyRoutingService`
+- `AdminRepository`
+
+## 5. Frontend JS Map
+
+Admin JavaScript is separated from JSP pages under:
+
+```text
+web/assets/js/admin/
+├── dashboard.js
+├── users.js
+├── services.js
+├── schedule-management.js
+└── reports.js
+```
+
+JSP pages should only keep small configuration blocks for server-side values:
+
+```jsp
+<script>
+    window.AdminConfig = {
+        contextPath: '${pageContext.request.contextPath}',
+        csrfToken: '${sessionScope.csrfToken}'
+    };
+</script>
+```
+
+Rules:
+
+- Do not put large page logic directly inside JSP files.
+- Put page behavior in the matching file under `web/assets/js/admin/`.
+- Pass JSP values through `window.AdminConfig` or a page-specific object such as `window.AdminDashboardData`.
+- Keep `exception-routing.jsp` without a JS file until it has real page behavior to extract.
+
+JS ownership:
+
+- `dashboard.js`: dashboard charts, quick modals, queue modals.
+- `users.js`: account profile modal and confirmation modal.
+- `services.js`: edit medical service modal.
+- `reports.js`: report charts, report detail modal, invoice detail modal.
+- `schedule-management.js`: transfer schedule, edit schedule, AI scheduling, appointment modal, quota badges.
+
+## 6. Database Tables Used By Admin
+
+Important tables:
+
+- `Account`: login identity, role, account status.
+- `Patient`: patient profile linked to account.
+- `Doctor`: doctor profile linked to account.
+- `Medical_Service`: service catalog.
+- `Doctor_Schedule`: doctor work date, time slot, capacity, status, online quota.
+- `Appointment`: patient appointment, doctor, schedule, queue number, booking source, workflow status.
+- `Invoice`: billing header, payment method, paid/pending status.
+- `Invoice_Detail`: billing lines and service references.
+- `Medical_record`: doctor-created medical record tied to appointment.
+- `Healthy_Record`: diabetes health metrics and AI/doctor processing state.
+- `Doctor_AI`: AI analysis result for health records.
+- `Record_Transfer_History`: transfer history for health records.
+
+Admin-related migrations:
+
+- `database/sync_project_swp_to_swp_schema.sql`
+- `database/migration_add_no_show_status_mssql.sql`
+- `database/migration_fix_online_quota_60_percent_mssql.sql`
+
+Important schema additions compared with older scripts:
+
+- `Doctor_Schedule.online_quota`
+- `Appointment.booking_source`
+- `Appointment.status` supports `Checked_In`, `In_Progress`, `No_Show`, `Cancelled`, `Completed`, `Waiting`
+- `Doctor_Schedule.status` may be refreshed to `Available`, `Full`, `Expired`, or `Cancelled`
+- Invoice and invoice detail fields used by revenue reports
+
+## 7. Status Rules
+
+### Appointment statuses
+
+Canonical statuses:
+
+- `Waiting`
+- `Checked_In`
+- `In_Progress`
+- `Completed`
+- `Cancelled`
+- `No_Show`
+
+Vietnamese labels:
+
+- `Waiting` -> `Đã đặt lịch`
+- `Checked_In` -> `Đã check-in`
+- `In_Progress` -> `Đang khám`
+- `Completed` -> `Đã hoàn tất`
+- `Cancelled` -> `Đã hủy`
+- `No_Show` -> `Không đến`
+
+Statuses that occupy a schedule slot:
+
+- `Waiting`
+- `Checked_In`
+- `In_Progress`
+- `Completed`
+
+Statuses that do not occupy a schedule slot:
+
+- `Cancelled`
+- `No_Show`
+
+### Schedule statuses
+
+Canonical statuses:
+
+- `Available`
+- `Full`
+- `Expired`
+- `Cancelled`
+
+Refresh rule:
+
+```text
+If schedule is Cancelled -> keep Cancelled
+Else if end time has passed -> Expired
+Else if bookedCount >= max_patients -> Full
+Else -> Available
+```
+
+`bookedCount` must exclude `Cancelled` and `No_Show`.
+
+## 8. Schedule Capacity Rules
+
+### bookedCount
+
+Correct SQL concept:
+
+```sql
+SELECT COUNT(*) AS booked_count
+FROM Appointment
+WHERE schedule_id = ?
+  AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'completed');
+```
+
+### onlineBookedCount
+
+Correct SQL concept:
+
+```sql
+SELECT COUNT(*) AS online_booked_count
+FROM Appointment
+WHERE schedule_id = ?
+  AND LOWER(LTRIM(RTRIM(COALESCE(booking_source, '')))) = 'online'
+  AND LOWER(status) IN ('waiting', 'checked_in', 'in_progress', 'completed');
+```
+
+### Online booking
+
+Online patient booking is allowed only when:
+
+```text
+onlineBookedCount < onlineQuota
+schedule is not Cancelled
+schedule is not Expired
+schedule has not passed new-patient cutoff time
+```
+
+When online booking is full, show:
+
+```text
+Ca này đã hết slot đặt online. Vui lòng chọn ca khác hoặc liên hệ lễ tân để được hỗ trợ.
+```
+
+### Staff booking
+
+Staff/receptionist/walk-in booking can use reserved slots when:
+
+```text
+bookedCount < maxPatients
+schedule is not Cancelled
+schedule is not Expired
+schedule has not passed new-patient cutoff time
+```
+
+## 9. AI Scheduling
+
+AI scheduling lives in:
+
+- `AdminSchedulingHandler.java`
+- `AdminSchedulingService.java`
+- `AdminSchedulingDAO.java`
+- `AdminRepository.java`
+- `src/java/com/diabetes/monitoring/util/GeminiSchedulingService.java`
+
+Flow:
+
+```text
+schedule-management.jsp
+-> /admin?action=aiCreateSchedules
+-> AdminServlet
+-> AdminSchedulingHandler
+-> AdminAiSchedulingService
+-> GeminiSchedulingService
+-> AdminScheduleConstraintValidator
+-> AdminRepository insert
+```
+
+Important rules:
+
+- Gemini suggests candidate schedules.
+- Backend validates each candidate before inserting.
+- Duplicate and overlapping schedules must be rejected.
+- If Gemini fails, local fallback scheduling can create schedules.
+- Inserted rows should include a source marker where available, such as `Gemini AI` or local fallback.
+
+## 10. Common Development Checklist
+
+When changing Admin code:
+
+1. Start from `AdminServlet` to find the `action`.
+2. Follow the handler method.
+3. Follow the service method.
+4. Follow DAO/repository SQL.
+5. Check the JSP that renders the result.
+6. Check `AdminStatusMapper` when status labels or counting rules are involved.
+7. Check `AdminScheduleConstraintValidator` when schedule rules are involved.
+8. Re-run compile with `ant compile`.
+
+When changing schedule capacity:
+
+1. Check `calculateDefaultOnlineQuota`.
+2. Check `getBookedCountBySchedule`.
+3. Check `getOnlineBookedCountBySchedule`.
+4. Check `canBookOnline`.
+5. Check `canBookByStaff`.
+6. Check `refreshDoctorScheduleStatusFromAppointments`.
+7. Check `schedule-management.jsp` quota display.
+
+When changing reports:
+
+1. Revenue must use paid invoices only.
+2. Visits must use completed appointments only.
+3. Detail modal and chart data must use the same date granularity.
+
+When changing appointment workflow:
+
+1. Respect `Waiting -> Checked_In -> In_Progress -> Completed`.
+2. Do not count `No_Show` and `Cancelled` as occupied slots.
+3. Refresh schedule status after workflow-changing actions.
+4. Keep Vietnamese labels in `AdminStatusMapper`.
+
+## 11. Known Design Notes
+
+- The package structure is already simplified into five Admin packages.
+- Some source files contain one public facade class and package-private internal classes. This was done to reduce package/file sprawl after the Admin refactor.
+- `AdminRepository` is intentionally central right now, but it is large. Future cleanup can split it into repositories by domain.
+- `UserDAO.java` outside the Admin package is also large and handles login, account, doctor, patient, health record, assignment, and AI analysis. Do not confuse it with the Admin package design.
+- Build artifacts under `build/` and `dist/` are generated. Source of truth is under `src/java`, `web/admin`, and `database`.
+
+## 12. Important Files
+
+Controller:
+
+- `src/java/com/diabetes/monitoring/admin/AdminServlet.java`
+
+Analytics:
+
+- `src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsHandler.java`
+- `src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsService.java`
+- `src/java/com/diabetes/monitoring/admin/analytics/AdminAnalyticsDAO.java`
+
+Management:
+
+- `src/java/com/diabetes/monitoring/admin/management/AdminManagementHandler.java`
+- `src/java/com/diabetes/monitoring/admin/management/AdminManagementService.java`
+- `src/java/com/diabetes/monitoring/admin/management/AdminManagementDAO.java`
+
+Scheduling:
+
+- `src/java/com/diabetes/monitoring/admin/scheduling/AdminSchedulingHandler.java`
+- `src/java/com/diabetes/monitoring/admin/scheduling/AdminSchedulingService.java`
+- `src/java/com/diabetes/monitoring/admin/scheduling/AdminSchedulingDAO.java`
+- `src/java/com/diabetes/monitoring/admin/scheduling/AdminScheduleConstraintValidator.java`
+
+Patient flow:
+
+- `src/java/com/diabetes/monitoring/admin/patientflow/AdminPatientFlowHandler.java`
+- `src/java/com/diabetes/monitoring/admin/patientflow/AdminPatientFlowService.java`
+- `src/java/com/diabetes/monitoring/admin/patientflow/AdminPatientFlowDAO.java`
+
+Common:
+
+- `src/java/com/diabetes/monitoring/admin/common/AdminRepository.java`
+- `src/java/com/diabetes/monitoring/admin/common/AdminJsonUtil.java`
+- `src/java/com/diabetes/monitoring/admin/common/AdminStatusMapper.java`
+- `src/java/com/diabetes/monitoring/admin/common/ApiResponseDTO.java`
+- `src/java/com/diabetes/monitoring/admin/common/ReportSeriesDTO.java`
+
+Views:
+
+- `web/admin/dashboard.jsp`
+- `web/admin/users.jsp`
+- `web/admin/services.jsp`
+- `web/admin/schedule-management.jsp`
+- `web/admin/reports.jsp`
+- `web/admin/exception-routing.jsp`
+- `web/admin/health-records.jsp`
+- `web/admin/fragments/sidebar.jspf`
+
+Admin JS:
+
+- `web/assets/js/admin/dashboard.js`
+- `web/assets/js/admin/users.js`
+- `web/assets/js/admin/services.js`
+- `web/assets/js/admin/schedule-management.js`
+- `web/assets/js/admin/reports.js`
+
+Database:
+
+- `database/SWP .sql`
+- `database/sync_project_swp_to_swp_schema.sql`
+- `database/migration_add_no_show_status_mssql.sql`
+- `database/migration_fix_online_quota_60_percent_mssql.sql`
+
+## 13. Quick Mental Model
+
+Use this mental model when debugging:
+
+```text
+JSP page or fetch()
+-> /admin?action=...
+-> AdminServlet
+-> module Handler
+-> module Service
+-> module DAO
+-> AdminRepository
+-> SQL Server
+-> back to JSP or JSON
+```
+
+For most bugs, the fastest path is:
+
+```text
+Find action in JSP
+-> find action in AdminServlet
+-> inspect handler method
+-> inspect repository method
+-> verify DB status/counting rule
+```
